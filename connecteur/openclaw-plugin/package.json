@@ -1,0 +1,15 @@
+{
+  "name": "openclaw-plugin-memoire-qui-trie",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Pont ContextEngine OpenClaw ↔ service memoire/ (le tri du périmé).",
+  "peerDependencies": {
+    "openclaw": ">=2026.5.17"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+# ── SECRETS (ne JAMAIS suivre) ───────────────────────────────────────────────
+.secrets/
+*.secret
+*.key
+*.pem
+*.env
+.env
+.env.*
+**/secrets.*
+*_secret*
+*apikey*
+*api_key*
+openrouter*.txt
+# clés / tokens potentiels
+*token*.txt
+
+# ── Données de mémoire & artefacts personnels ────────────────────────────────
+*.pkl
+connecteur/donnees/
+~/.openclaw/
+.openclaw/
+
+# ── Sorties d'exécution (non versionnées) ────────────────────────────────────
+logs/
+resultats/
+*.log
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+venv/
+.venv/
+
+# ── Node / plugin OpenClaw ───────────────────────────────────────────────────
+node_modules/
+connecteur/openclaw-plugin/node_modules/
+package-lock.json
+npm-debug.log*
+
+# ── OS / éditeurs ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

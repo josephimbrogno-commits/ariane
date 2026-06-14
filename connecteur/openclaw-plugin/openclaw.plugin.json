@@ -1,0 +1,19 @@
+{
+  "id": "memoire-qui-trie",
+  "name": "Memoire qui trie",
+  "description": "Moteur de TRI du périmé (dates, clôture, provenance) branché sur le service Python memoire/. Coexiste avec memory-core.",
+  "version": "1.0.0",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "serviceUrl": {
+        "type": "string",
+        "description": "URL du service mémoire Python (défaut http://127.0.0.1:8077, ou env MEMOIRE_SERVICE_URL)."
+      }
+    }
+  }
+}

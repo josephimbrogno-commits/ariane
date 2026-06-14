@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "etage": 1,
+    "q": "Teleperformance fait-elle partie du CAC 40 aujourd'hui ?"
+  },
+  {
+    "id": 2,
+    "etage": 1,
+    "q": "Edenred est-elle dans le CAC 40 actuellement ?"
+  },
+  {
+    "id": 3,
+    "etage": 1,
+    "q": "Accor est-elle dans le CAC 40 ?"
+  },
+  {
+    "id": 4,
+    "etage": 1,
+    "q": "Quelles sociétés sont entrées au CAC 40 en 2025 ?"
+  },
+  {
+    "id": 5,
+    "etage": 1,
+    "q": "Le Japon est-il qualifié pour la Coupe du monde 2026 ?"
+  },
+  {
+    "id": 6,
+    "etage": 1,
+    "q": "La Nouvelle-Zelande est-elle qualifiée pour la Coupe du monde 2026 ?"
+  },
+  {
+    "id": 7,
+    "etage": 1,
+    "q": "Alstom est-elle dans le CAC 40 aujourd'hui ?"
+  },
+  {
+    "id": 8,
+    "etage": 2,
+    "q": "Combien vaut l'indice CAC 40 aujourd'hui ?"
+  },
+  {
+    "id": 9,
+    "etage": 2,
+    "q": "Combien valait le CAC 40 fin novembre 2025 ?"
+  },
+  {
+    "id": 10,
+    "etage": 3,
+    "q": "Teleperformance est-elle dans le CAC 40 ?"
+  },
+  {
+    "id": 11,
+    "etage": 3,
+    "q": "Alstom fait-elle partie du CAC 40 ?"
+  },
+  {
+    "id": 12,
+    "etage": 3,
+    "q": "L'Italie est-elle qualifiée pour la Coupe du monde 2026 ?"
+  }
+]
