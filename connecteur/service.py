@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from memoire import Memoire, config
 from memoire.coeur import lecture
 from memoire.coeur.graphe import norm_nom
+from memoire.coeur.ontologie import PREDICATS
 from memoire.adaptateurs.ollama_qwen import OllamaLLM, faire_embed
 
 # ── persistance (côté service, le cœur reste intact) ─────────────────────────
@@ -253,6 +254,27 @@ def retoucher(r: Retoucher):
 
 
 # ── INSPECTION ───────────────────────────────────────────────────────────────
+@app.get("/faits")
+def faits():
+    """Liste structurée de TOUS les faits (lecture seule) — pour le tableau de bord."""
+    g = mem.g
+    out = []
+    for f in g.faits.values():
+        statut_eff = f.statut_avant_dormance if f.statut == "dormant" else f.statut
+        out.append({
+            "id": f.id, "sujet": g.nom_entite(f.sujet_id), "predicat": f.predicat,
+            "objet": g.nom_entite(f.objet_id) if f.objet_id is not None else f.objet,
+            "statut": f.statut, "statut_effectif": statut_eff,
+            "force": round(f.force, 2), "certitude": round(f.certitude, 2),
+            "n_sources": f.n_sources(), "sources": sorted({p["source_id"] for p in f.provenance}),
+            "valide_de": f.valide_de.strftime("%Y-%m") if f.valide_de else None,
+            "valide_jusqua": f.valide_jusqua.strftime("%Y-%m") if f.valide_jusqua else None,
+            "volatilite": PREDICATS.get(f.predicat, {}).get("volatilite"),
+        })
+    out.sort(key=lambda x: (x["sujet"], x["predicat"]))
+    return {"n": len(out), "faits": out, "entites": sorted(e.nom for e in g.entites.values())}
+
+
 @app.get("/inspecter")
 def inspecter(ref: str):
     cible = int(ref) if ref.lstrip("-").isdigit() else ref
