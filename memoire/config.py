@@ -30,12 +30,21 @@ V2_FUSION_SEUIL = 0.95
 V2_TOP_K_LECTURE = 8
 V2_BONUS_ENTITE = 0.30
 
+# ── DORMANCE GRADUELLE en LECTURE : un dormant n'est plus MUET, il arrive en rang BAISSÉ ───
+# Malus de rang appliqué aux dormants dans l'entrée vectorielle, ATTÉNUÉ par la corroboration
+# (n_sources) mais JAMAIS annulé (plancher). On adoucit la pente, on ne supprime pas l'oubli.
+#   malus = max(MIN, BASE / (1 + BETA·(n_sources−1)))    # 1 src→BASE · 2 src→BASE/(1+BETA) · plancher MIN
+DORMANCE_RANG_MALUS_BASE = 0.30   # malus d'un dormant MONO-source (fragile) : reste tout en bas
+DORMANCE_RANG_CORRO_BETA = 3.00   # pente RAIDE : 2 sources atténuent fortement (0.075), pas 1 (0.30)
+DORMANCE_RANG_MALUS_MIN  = 0.05   # plancher : un dormant corroboré reste pénalisé (la dormance garde son rôle)
+
 # ── OPTIONS (interrupteurs, défauts prudents) ────────────────────────────
 OPT_RECONNAISSANCE = True       # entrée par nœud nommé (lit les dormants). Le vrai fix des faits muets.
 OPT_TYPOLOGIE = True            # typologie durable/éphémère en LECTURE de structure (informe la dormance)
 OPT_IMPORTANCE = False          # calcule l'importance (PageRank). OFF par défaut (l'hôte l'active).
 OPT_IMPORTANCE_RETRIEVAL = False  # importance dans le score de retrieval. OFF : le run V3 y a vu du bruit.
 OPT_DORMANCE_MODULEE = False    # dormance abaissée pour les faits importants. OFF (vindiquée en rappel libre).
+OPT_DORMANCE_RANG_GRADUEL = True  # dormant = rang baissé (pas muet), malus modulé par corroboration. ON (fix stress-test).
 
 # ── Importance (option) — PageRank pondéré + croisement entité × relation ──
 IMP_DAMPING = 0.85

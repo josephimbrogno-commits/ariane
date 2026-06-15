@@ -37,9 +37,19 @@ def _poids_force(f):
     return 0.5 + 0.5 * f.force
 
 
+def _malus_dormance(f):
+    """Malus de rang d'un dormant, ATTÉNUÉ par la corroboration mais jamais annulé (plancher).
+    Renvoie 0 pour un fait courant/disputé."""
+    n = f.n_sources()
+    facteur = 1.0 / (1.0 + config.DORMANCE_RANG_CORRO_BETA * max(0, n - 1))
+    return max(config.DORMANCE_RANG_MALUS_MIN, config.DORMANCE_RANG_MALUS_BASE * facteur)
+
+
 def entree_vectorielle(g, question, k=None):
-    """Top-k faits courant/disputé, pondérés Force (+ importance si l'option retrieval est active).
-    Dormants EXCLUS de l'évocation libre. Bonus si l'entité du fait est nommée dans la question."""
+    """Top-k faits, pondérés Force (+ importance si l'option retrieval est active). Les DORMANTS sont
+    INCLUS mais avec un MALUS DE RANG modulé par la corroboration (dormance graduelle, pas binaire) :
+    un dormant bien attesté remonte en rang bas, un dormant fragile/mono-source reste tout en bas.
+    Bonus si l'entité du fait est nommée dans la question."""
     if k is None:
         k = config.V2_TOP_K_LECTURE
     v = g.embed(question)
@@ -47,9 +57,13 @@ def entree_vectorielle(g, question, k=None):
     use_imp = config.OPT_IMPORTANCE and config.OPT_IMPORTANCE_RETRIEVAL
     scored = []
     for f in g.faits.values():
-        if f.statut not in ("courant", "disputé"):
-            continue
-        s = config.IMP_W_SIM * float(v @ f.embedding) + config.IMP_W_FORCE * f.force
+        if f.statut in ("courant", "disputé"):
+            malus = 0.0
+        elif f.statut == "dormant" and config.OPT_DORMANCE_RANG_GRADUEL:
+            malus = _malus_dormance(f)          # inclus, mais pénalisé en rang
+        else:
+            continue                            # autres statuts (clos…) : hors évocation libre
+        s = config.IMP_W_SIM * float(v @ f.embedding) + config.IMP_W_FORCE * f.force - malus
         if use_imp:
             s += config.IMP_W_IMPORTANCE * f.importance
         e = g.entites.get(f.sujet_id)
