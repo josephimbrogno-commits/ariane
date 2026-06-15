@@ -178,19 +178,20 @@ def _tags(type_brut):
 
 def _assigner_role(predicat, sujet, objet, type_s, type_o):
     """Oriente (sujet, objet) selon la SIGNATURE de type du prédicat. Ne swappe QUE sur un croisement
-    de types NET ; sinon garde l'ordre grammatical (règle d'or : pas d'inversion silencieuse)."""
+    de types NET ; sinon garde l'ordre grammatical (règle d'or : pas d'inversion silencieuse).
+    Renvoie (sujet, objet, type_sujet, type_objet) — les types suivent l'entité (swappés ensemble)."""
     sig = PREDICATS.get(predicat, {})
     sig_ts, sig_to = sig.get("type_sujet"), sig.get("type_objet")
     if not sig_ts or not sig_to or sig_ts == sig_to:
-        return sujet, objet                      # signature symétrique → ordre grammatical (secours)
+        return sujet, objet, type_s, type_o      # signature symétrique → ordre grammatical (secours)
     ts, to = _tags(type_s), _tags(type_o)
     if not ts and not to:
-        return sujet, objet                      # types inconnus → prudence, on ne touche pas
+        return sujet, objet, type_s, type_o      # types inconnus → prudence, on ne touche pas
     garde_ok = (sig_ts in ts) and (sig_to in to)
     swap_ok = (sig_ts in to) and (sig_to in ts)
-    if swap_ok and not garde_ok:                 # la surface est inversée par rapport à la signature
-        return objet, sujet
-    return sujet, objet                          # match propre, ambigu, ou non concluant → on garde
+    if swap_ok and not garde_ok:                 # surface inversée → on swappe entités ET types
+        return objet, sujet, type_o, type_s
+    return sujet, objet, type_s, type_o          # match propre, ambigu, ou non concluant → on garde
 
 
 def extraire(llm, texte):
@@ -230,10 +231,14 @@ def extraire(llm, texte):
         return None
 
     # AXE RÔLE/DIRECTION : oriente par les TYPES des entités (swap si la surface est inversée)
-    sujet, objet = _assigner_role(predicat, sujet, objet,
-                                  brut.get("type_e_sujet"), brut.get("type_e_objet"))
+    sujet, objet, t_s, t_o = _assigner_role(predicat, sujet, objet,
+                                            brut.get("type_e_sujet"), brut.get("type_e_objet"))
+    # SOCLE TYPE : le type extrait par le greffier VOYAGE jusqu'au nœud (grain fin : pays/ville/…)
+    type_sujet = (_norm(t_s) or None) if t_s else None
+    type_objet = (_norm(t_o) or None) if t_o else None
 
     return {"sujet": sujet, "predicat": predicat, "objet": objet,
+            "type_sujet": type_sujet, "type_objet": type_objet,
             "polarite": pol, "modalite": mod, "temporalite": temp,
             "date_debut": deb, "date_fin": fin}
 

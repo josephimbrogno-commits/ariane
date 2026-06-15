@@ -32,6 +32,48 @@ def norm_valeur(v):
     return " ".join(_norm(v).split())
 
 
+# ── COMPATIBILITÉ DE TYPE pour la FUSION (anti-collision, mission 2) ──────────────────────────
+# On compare par FAMILLE de haut niveau (les grains fins pays/ville → famille « lieu »). On ne BLOQUE
+# la fusion que si les DEUX types ont une famille CONNUE et DIFFÉRENTE. Type inconnu/ambigu d'un côté
+# → fallback : fusion AUTORISÉE (comportement actuel) — on ne fragmente jamais sur le doute.
+_FAMILLE = {
+    "personne": "personne", "individu": "personne", "scientifique": "personne", "artiste": "personne",
+    "athlete": "personne", "joueur": "personne", "acteur": "personne", "ecrivain": "personne",
+    "dirigeant": "personne", "homme": "personne", "femme": "personne", "auteur": "personne",
+    "realisateur": "personne",
+    "organisation": "organisation", "entreprise": "organisation", "societe": "organisation",
+    "institution": "organisation", "club": "organisation", "parti": "organisation",
+    "federation": "organisation", "comite": "organisation", "banque": "organisation",
+    "lieu": "lieu", "ville": "lieu", "capitale": "lieu", "region": "lieu", "continent": "lieu",
+    "fleuve": "lieu", "riviere": "lieu", "montagne": "lieu", "mer": "lieu", "ocean": "lieu",
+    "desert": "lieu", "commune": "lieu", "pays": "lieu", "etat": "lieu",
+    "oeuvre": "oeuvre", "film": "oeuvre", "livre": "oeuvre", "roman": "oeuvre", "album": "oeuvre",
+    "tableau": "oeuvre", "chanson": "oeuvre", "produit": "oeuvre", "texte": "oeuvre",
+    "date": "date", "annee": "date", "periode": "date",
+    "distinction": "distinction", "recompense": "distinction", "medaille": "distinction",
+    "trophee": "distinction", "titre": "distinction",
+    "evenement": "evenement", "competition": "evenement", "match": "evenement", "tournoi": "evenement",
+    "sommet": "evenement", "ceremonie": "evenement", "festival": "evenement",
+    "substance": "substance", "molecule": "substance", "element": "substance", "gaz": "substance",
+    "espece": "espece", "animal": "espece", "plante": "espece",
+    "valeur": "valeur", "nombre": "valeur", "quantite": "valeur", "mesure": "valeur", "record": "valeur",
+    # AMBIGUS volontairement non mappés (→ famille None → jamais utilisés pour BLOQUER) :
+    #   nation (lieu|org) · equipe/groupe/selection (groupe|org) · prix (valeur|distinction)
+}
+
+
+def _famille(t):
+    return _FAMILLE.get(str(t).strip().lower()) if t else None
+
+
+def types_compatibles(t1, t2):
+    """True = fusion AUTORISÉE. On ne BLOQUE que si les deux familles sont CONNUES et DIFFÉRENTES."""
+    f1, f2 = _famille(t1), _famille(t2)
+    if f1 is None or f2 is None:
+        return True            # inconnu/ambigu d'un côté → fallback (comportement actuel)
+    return f1 == f2
+
+
 def parse_date(s):
     if isinstance(s, datetime):
         return s
@@ -98,20 +140,36 @@ class GrapheMemoire:
         self._eid = 0
         self._fid = 0
         self.journal_resolution = []
+        self.journal_type_conflit = []      # SOCLE TYPE : un type différent arrive sur un nœud déjà typé
 
     # ── RÉSOLUTION D'ENTITÉS ─────────────────────────────────────────────
-    def resoudre(self, nom, date):
+    def _poser_type(self, e, type_attendu):
+        """SOCLE TYPE (additif) : renseigne le type d'un nœud s'il manque ; si un type DIFFÉRENT
+        arrive sur un nœud déjà typé → on JOURNALISE le désaccord, on n'écrase JAMAIS."""
+        if not type_attendu:
+            return
+        if e.type is None:
+            e.type = type_attendu
+        elif e.type != type_attendu:
+            if not hasattr(self, "journal_type_conflit"):
+                self.journal_type_conflit = []
+            self.journal_type_conflit.append(
+                {"entite": e.nom, "type_garde": e.type, "type_recu": type_attendu})
+
+    def resoudre(self, nom, date, type_attendu=None):
         cible = norm_nom(nom)
         for e in self.entites.values():
             if cible in [norm_nom(e.nom)] + [norm_nom(a) for a in e.alias]:
+                self._poser_type(e, type_attendu)
                 return e, "exact"
         tok = set(cible.split())
         for e in self.entites.values():
             for n in [norm_nom(e.nom)] + [norm_nom(a) for a in e.alias]:
                 tn = set(n.split())
-                if tn and tok and (tn <= tok or tok <= tn):
+                if tn and tok and (tn <= tok or tok <= tn) and types_compatibles(e.type, type_attendu):
                     if nom not in e.alias and norm_nom(nom) != norm_nom(e.nom):
                         e.alias.append(nom)
+                    self._poser_type(e, type_attendu)
                     return e, "alias/tokens"
         v = self.embed(nom)
         best, score = None, -1.0
@@ -119,16 +177,17 @@ class GrapheMemoire:
             s = float(v @ e.embedding)
             if s > score:
                 score, best = s, e
-        if best is not None and score >= config.V2_RESOL_SEUIL:
+        if best is not None and score >= config.V2_RESOL_SEUIL and types_compatibles(best.type, type_attendu):
             if nom not in best.alias:
                 best.alias.append(nom)
+            self._poser_type(best, type_attendu)
             return best, f"embedding {score:.2f}"
         if best is not None and score >= config.V2_RESOL_AMBIGU_BAS:
             self.journal_resolution.append(
                 {"nom": nom, "proche": best.nom, "score": round(score, 3),
                  "decision": "créée comme NOUVELLE (à auditer)"})
         self._eid += 1
-        e = Entite(self._eid, nom, [], v, date)
+        e = Entite(self._eid, nom, [], v, date, type=type_attendu)   # le type voyage à la création
         self.entites[e.id] = e
         return e, "création"
 
@@ -165,12 +224,13 @@ class GrapheMemoire:
                 if f.sujet_id == sujet_id and f.predicat == predicat]
 
     # ── PROCÉDURE D'ÉCRITURE ─────────────────────────────────────────────
-    def ingerer(self, sujet, predicat, objet, source_id, date_obs, date_validite=None):
+    def ingerer(self, sujet, predicat, objet, source_id, date_obs, date_validite=None,
+                type_sujet=None, type_objet=None):
         spec = PREDICATS[predicat]
-        sujet_e, _ = self.resoudre(sujet, date_obs)
+        sujet_e, _ = self.resoudre(sujet, date_obs, type_sujet)   # le type du greffier voyage au nœud
         objet_id, objet_aff = None, objet
         if spec["objet_entite"]:
-            objet_e, _ = self.resoudre(objet, date_obs)
+            objet_e, _ = self.resoudre(objet, date_obs, type_objet)
             objet_id, objet_aff = objet_e.id, objet_e.nom
 
         cle_new = objet_id if objet_id is not None else norm_valeur(objet_aff)
@@ -342,7 +402,8 @@ class GrapheMemoire:
                 if ids[j] in supprimees:
                     continue
                 e1, e2 = self.entites[ids[i]], self.entites[ids[j]]
-                if float(e1.embedding @ e2.embedding) > config.V2_FUSION_SEUIL:
+                if (float(e1.embedding @ e2.embedding) > config.V2_FUSION_SEUIL
+                        and types_compatibles(e1.type, e2.type)):
                     for f in self.faits.values():
                         if f.sujet_id == e2.id:
                             f.sujet_id = e1.id

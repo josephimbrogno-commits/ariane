@@ -56,7 +56,8 @@ class Memoire:
         if act == "FAIT_CLOS":
             return self._fait_clos(tri, source_id, quand, intention.get("debut"), intention.get("fin"))
         return self.g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
-                              date_obs=quand, date_validite=intention.get("debut"))
+                              date_obs=quand, date_validite=intention.get("debut"),
+                              type_sujet=tri.get("type_sujet"), type_objet=tri.get("type_objet"))
 
     def _fait_clos(self, tri, source_id, date, debut, fin):
         """Intervalle fermé / fin déclarée (« de X à Y », « jusqu'en Y ») → fait DÉCLARÉ CLOS
@@ -65,7 +66,8 @@ class Memoire:
         g = self.g
         d_obs = parse_date(debut) or date
         res = g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
-                        date_obs=d_obs, date_validite=debut)
+                        date_obs=d_obs, date_validite=debut,
+                        type_sujet=tri.get("type_sujet"), type_objet=tri.get("type_objet"))
         f = res["touches"][-1]
         g.clore_fait(f, source_id, parse_date(fin) or date)
         return {"action": "FAIT CLOS (intervalle/fin déclaré) — « était… jusqu'à »",
@@ -102,10 +104,13 @@ class Memoire:
         return {"action": "POLARITÉ DE FIN — aucun fait courant à clore ; rien produit (sûr)",
                 "polarite": "fin", "relation": f"{predicat}({sujet})={objet}"}
 
-    def ecrire_triplet(self, sujet, predicat, objet, source_id, date=None, validite=None):
-        """Ingère un triplet déjà structuré (sans LLM). Utile aux tests et au geste `lier`."""
+    def ecrire_triplet(self, sujet, predicat, objet, source_id, date=None, validite=None,
+                       type_sujet=None, type_objet=None):
+        """Ingère un triplet déjà structuré (sans LLM). Utile aux tests et au geste `lier`.
+        type_sujet/type_objet optionnels (le socle type) : passés tels quels au nœud si fournis."""
         return self.g.ingerer(sujet, predicat, objet, source_id=source_id,
-                              date_obs=self._date(date), date_validite=validite)
+                              date_obs=self._date(date), date_validite=validite,
+                              type_sujet=type_sujet, type_objet=type_objet)
 
     def lire(self, question, date=None):
         """Entrée vectorielle (+ reconnaissance par nœud nommé) + marche de graphe ; rendu verbal."""
