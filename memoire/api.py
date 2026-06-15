@@ -13,7 +13,7 @@ Le LLM et l'embedding sont INJECTÉS (bibliothèque agnostique du modèle).
 from datetime import datetime
 
 from . import config
-from .coeur.graphe import GrapheMemoire, parse_date
+from .coeur.graphe import GrapheMemoire, parse_date, norm_valeur
 from .coeur.ontologie import PREDICATS
 from .coeur import extraction, lecture
 
@@ -44,8 +44,63 @@ class Memoire:
         tri = extraction.extraire(self.llm, enonce)
         if not tri:
             return {"erreur": "extraction échouée", "enonce": enonce}
+        # DÉRIVATION DÉTERMINISTE (V2) : les axes → l'intention, puis on l'exécute.
+        intention = extraction.deriver(tri)
+        act = intention["action"]
+        quand = self._date(date)
+        if act == "RIEN":
+            return {"action": "RIEN — " + intention.get("raison", "doute"),
+                    "relation": f'{tri["predicat"]}({tri["sujet"]})={tri["objet"]}'}
+        if act == "CLOTURE_NIEE":
+            return self._clore_par_extraction(tri, source_id, quand)
+        if act == "FAIT_CLOS":
+            return self._fait_clos(tri, source_id, quand, intention.get("debut"), intention.get("fin"))
         return self.g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
-                              date_obs=self._date(date), date_validite=tri["date_validite"])
+                              date_obs=quand, date_validite=intention.get("debut"))
+
+    def _fait_clos(self, tri, source_id, date, debut, fin):
+        """Intervalle fermé / fin déclarée (« de X à Y », « jusqu'en Y ») → fait DÉCLARÉ CLOS
+        (« était… de [début] à [fin] »). Sûr : un clos n'est jamais servi au présent. Distinct de
+        l'orphelin de polarité (« éliminé ») : ici l'intervalle est EXPLICITEMENT énoncé."""
+        g = self.g
+        d_obs = parse_date(debut) or date
+        res = g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
+                        date_obs=d_obs, date_validite=debut)
+        f = res["touches"][-1]
+        g.clore_fait(f, source_id, parse_date(fin) or date)
+        return {"action": "FAIT CLOS (intervalle/fin déclaré) — « était… jusqu'à »",
+                "faits": [g.fait_court(f)]}
+
+    def _clore_par_extraction(self, tri, source_id, date):
+        """Polarité de fin → CLÔTURE du fait existant (« était… jusqu'à »), JAMAIS un fait positif.
+        Si aucun fait courant ne correspond, comportement SÛR : créer un fait DÉJÀ CLOS, mono-source
+        (donc incertain) — il préserve « était membre… » sans jamais affirmer une appartenance
+        ACTUELLE. Un clos n'est jamais servi au présent : il ne peut pas être « confidently wrong »."""
+        g = self.g
+        sujet, predicat, objet = tri["sujet"], tri["predicat"], tri["objet"]
+        e = g.trouver_entite(sujet)
+        courants = ([f for f in g.faits_de(e.id, predicat) if f.statut in ("courant", "disputé")]
+                    if e else [])
+
+        def objet_de(f):
+            return g.nom_entite(f.objet_id) if f.objet_id is not None else f.objet
+
+        cible = next((f for f in courants
+                      if norm_valeur(objet_de(f)) == norm_valeur(objet)), None)
+        if cible is None and PREDICATS[predicat]["fonctionnel"] and len(courants) == 1:
+            cible = courants[0]              # fonctionnel : une seule valeur courante → on la clôt
+
+        if cible is not None:
+            g.clore_fait(cible, source_id, date)
+            return {"action": f"CLÔTURE (polarité de fin) — #{cible.id} devient « était… jusqu'à »",
+                    "polarite": "fin", "faits": [g.fait_court(cible)]}
+
+        # Orphelin : on apprend une FIN sans avoir connu le fait. On ne crée RIEN — car créer un
+        # « était… » serait affirmer un PASSÉ non vérifié. Contre-exemple décisif : « l'Italie est
+        # éliminée » ne veut PAS dire qu'elle « était qualifiée » (elle ne l'a jamais été). Règle
+        # d'or : mieux vaut rater proprement qu'affirmer le faux. → rien produit.
+        return {"action": "POLARITÉ DE FIN — aucun fait courant à clore ; rien produit (sûr)",
+                "polarite": "fin", "relation": f"{predicat}({sujet})={objet}"}
 
     def ecrire_triplet(self, sujet, predicat, objet, source_id, date=None, validite=None):
         """Ingère un triplet déjà structuré (sans LLM). Utile aux tests et au geste `lier`."""
