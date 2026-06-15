@@ -25,6 +25,14 @@ logs/
 resultats/
 *.log
 
+# ── PRIVÉ : stress-test chaotique (faits web réels, JAMAIS publié) ────────────
+connecteur/test_reel/STRESS_CHAOS.md
+connecteur/test_reel/chaos.py
+connecteur/test_reel/carnet.json
+connecteur/test_reel/chaos_resultats.json
+connecteur/test_reel/volume_wikinews.json
+connecteur/test_reel/barometre_extraction_res.json
+
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
