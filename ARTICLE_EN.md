@@ -42,7 +42,7 @@ This system wasn't born from a plan. It was born from a string of failures, each
 
 **The liar.** A single source, through the sheer play of freshness, ended up looking more certain than an older truth. Lesson: you need a **certainty floor** for what the world has corroborated, or the new supplants the true.
 
-**Importance, unvindicated — then vindicated.** A third axis (importance, computed from graph structure) showed no gain on the early benchmarks. Rather than declaring it useful on principle, we built a benchmark *specifically* to break it — "Ariane," after the rocket: it flies or it explodes on the pad. Verdict: importance does serve on its true terrain (recovering a crucial, never-consulted fact), *and* the benchmark revealed a deeper limit elsewhere (binary forgetting). The system even corrected its own initial, too-lenient verdict.
+**Importance, unvindicated — then vindicated.** A third axis (importance, computed from graph structure) showed no gain on the early benchmarks. Rather than declaring it useful on principle, we built a benchmark *specifically* to break it — "Ariane," after the rocket: it flies or it explodes on the pad. Verdict: importance does serve on its true terrain (recovering a crucial, never-consulted fact), *and* the benchmark revealed a deeper limit elsewhere (binary forgetting). The system even corrected its own initial, too-lenient verdict. *(This binary forgetting has since been fixed: dormancy is no longer a mute/present switch but a slope — a rare, well-corroborated fact becomes audible again at a low rank despite months without consultation, while a fragile fact stays at the bottom. The same lesson — replacing a cleaver with a gradient — applied once more.)*
 
 Six walls, six principles. None was hidden; each is documented in the repository.
 
@@ -54,16 +54,18 @@ All the benchmarks above were synthetic. The real trial remained: **real, dated,
 
 Four configurations, same questions, ground truth established by hand (never by a model):
 
-| Configuration | Correct | "Confidently wrong" |
+| Configuration | Correct answers | "Confidently wrong" |
 |---|---|---|
-| Bare agent | ~33% | majority — asserts stale facts, thinks it's 2023 |
-| RAG, well-kept notes | ~92% | 0 |
-| Our memory (sorting) | ~83% | 0 |
-| RAG, naive notes | 0/5 | 5/5 — serves stale facts and liars with full confidence |
+| Bare agent | ~57% | 2-3 — asserts stale facts (Scholz as chancellor, Alstom in the CAC) |
+| RAG, well-kept notes | 93% | 0 |
+| Our memory (sorting) | 93% | 0 |
+| RAG, naive notes | 40% | 3/3 — serves stale facts and liars with confidence |
 
-The result is honest, and it stings: **a well-fed RAG, with a capable model, sorts as well as we do — even edges ahead on raw accuracy (92% vs 83%).** When every note carries its date in plain text, the model reads "left in September 2025, it's now June 2026" and concludes on its own. The naive thesis "sorting beats recall" does not hold in that case. On what matters most, the two tie: **zero confidently-wrong** across all twelve questions.
+The result is honest, and it stings: **a well-fed RAG, with a good model, sorts as well as we do — tied on raw accuracy (93% each).** When every note carries its date in plain text, the model reads "left in September 2025, it's now June 2026" and concludes on its own. The naive thesis "sorting beats retrieval" doesn't hold in this case. On what truly matters, the two are tied: **zero confident errors** across the fourteen questions.
 
-But look at the last row. As soon as the notes are **not** disciplined — the most common real-world case — the RAG collapses: it pulls back the old and the new without separating them, and serves the liar like the truth. Our memory produced **zero** confidence errors across the entire test.
+An honest caveat is needed here, as it tempers the table: the bare agent isn't as helpless as one might think. The local model already knows some recent facts (it knows Merz is chancellor — its training cutoff is recent). So the contrast doesn't erupt everywhere: it erupts on the **verifiable obscure**, the facts no model holds in memory — the 2025 CAC 40 exits, for instance. That is where, on what the world changed without any famous name discussing it, the memory makes the difference.
+
+But look at the last line. As soon as the notes are **not** disciplined — the most common real case — the RAG collapses: it surfaces the old and the new without telling them apart, and serves the liar as truth. Our memory produced **no** confident error across the entire test.
 
 The real value, then, isn't being *smarter* than RAG. It's making correction **structural**:
 
@@ -77,7 +79,7 @@ A RAG sorts *if* you fed it well. A structured memory sorts *because* the archit
 
 An honest lab publishes its cracks.
 
-- **Extraction on real language: ~40%.** The module that turns a sentence into a structured fact, perfect on clean synthetic statements, drops on real journalistic language (it knows neither "qualified for" nor "joined the index"). It's the first job for any future productization.
+- **Real-language extraction: rebuilt.** The module that turns a sentence into a structured fact was the system's bottleneck (~40% on real language at first). It was rebuilt along four independent axes — polarity, modality, temporality, role/direction — modeled on the memory itself (separate axes rather than a single decision). Result on a blind six-domain benchmark: **zero polarity false positives**, role inversions fixed (4 → 0 by deriving from argument types), and coverage raised to **~90%** thanks to an ontology *induced from text* (one model proposes, another prunes, the human validates). The residue is named: **fine entity resolution** (telling apart two entities of the same type, not merging "France" and "Business France") is still loose — that's the next worksite.
 - **The rendering doesn't expose the start-of-validity date** of current facts — hence a failure on "who joined the index in 2025?" A display limit, not a fundamental one.
 - **The continuous price** is not a fact-memory's job: a price changing every second has no "switch date." The right behavior is to recognize that and not assert it — not to commit to it.
 
@@ -91,7 +93,7 @@ This project isn't alone on this terrain, and that's good: confidently-wrong is 
 
 ## To close
 
-The result fits in one sentence: **a structured memory isn't smarter than a good RAG — it's more reliable when the world is messy.** And the bare agent — correct only 33% of the time, wrong with confidence on half the questions — on facts anyone can verify, is a reminder of why the question is worth the trouble.
+The result fits in one sentence: **a structured memory is not smarter than a good RAG — it is more reliable when the world is messy.** And the bare agent, which still asserts stale facts on what its training never saw — index exits, quiet shifts that anyone can nonetheless verify — reminds us why the question is worth pausing on.
 
 ---
 

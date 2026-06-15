@@ -34,17 +34,17 @@ Language models have frozen knowledge: they serve a stale fact with the same con
 
 ## Résultat clé / Key result
 
-Sur des faits réels (CAC 40, Coupe du monde 2026), branché sur un agent OpenClaw local :
+Sur des faits réels datés et vérifiables (composition du CAC 40, chancelier d'Allemagne), branché sur un agent OpenClaw local :
 
 | Config | Correct | Confidently wrong |
 |---|---|---|
-| Agent nu / Bare agent | ~33% | majoritaire / majority |
-| RAG (notes propres / clean notes) | ~92% | 0 |
-| Ariane | ~83% | 0 |
-| RAG (notes naïves / naive notes) | 0/5 | 5/5 |
+| Agent nu / Bare agent | ~57% | 2-3 (faits périmés) |
+| RAG (notes propres / clean notes) | 93% | 0 |
+| Ariane | 93% | 0 |
+| RAG (notes naïves / naive notes) | 40% | 3/3 (périssables) |
 
-**Sur la justesse brute, un bon RAG fait jeu égal — voire un peu mieux (92 % contre 83 %) — quand ses notes sont parfaites. Ariane ne gagne pas là : elle ne se trompe jamais avec aplomb (0/12, comme le RAG propre) et tient quand les notes sont sales (le RAG naïf, lui, se trompe 5 fois sur 5).**
-**On raw accuracy a good RAG ties — even edges ahead (92% vs 83%) — when its notes are perfect. Ariane doesn't win there: it is never confidently wrong (0/12, like clean RAG) and holds when notes are messy (naive RAG fails 5 out of 5).**
+**Sur la justesse brute, un bon RAG fait jeu égal avec Ariane (93 % chacun). Ariane ne gagne pas là : elle ne se trompe jamais avec aplomb (0 sur 14, comme le RAG propre) et tient quand les notes sont sales (le RAG naïf s'effondre à 40 % et sert le périmé avec assurance). Le contraste éclate surtout sur l'obscur vérifiable — les sorties du CAC 2025 qu'aucun modèle ne connaît — pas sur les faits récents notoires.**
+**On raw accuracy a good RAG ties Ariane (93% each). Ariane doesn't win there: it is never confidently wrong (0 of 14, like clean RAG) and holds when notes are messy (naive RAG collapses to 40% and serves stale facts with confidence). The contrast is sharpest on the verifiable obscure — the 2025 CAC exits no model knows — not on well-known recent facts.**
 
 ## Structure du dépôt / Repository layout
 
@@ -58,7 +58,8 @@ ARTICLE_EN.md   the full article (English)
 
 ## Limites assumées / Acknowledged limits
 
-Extraction sur langage réel ~40 % · le cours continu hors périmètre · prototype-laboratoire, pas un produit. / Real-language extraction ~40% · continuous prices out of scope · a lab prototype, not a product.
+Extraction sur langage réel : refondue en quatre axes (polarité, modalité, temporalité, rôle), 0 faux positif de polarité, greffier généraliste à ~90 % de couverture sur six domaines (banc à l'aveugle) · résolution d'entités fine encore lâche · le cours continu hors périmètre · prototype-laboratoire, pas un produit.
+/ Real-language extraction: rebuilt along four axes (polarity, modality, temporality, role), 0 polarity false positives, generalist extractor at ~90% coverage across six domains (blind benchmark) · fine entity resolution still loose · continuous prices out of scope · a lab prototype, not a product.
 
 ## Licence / License
 

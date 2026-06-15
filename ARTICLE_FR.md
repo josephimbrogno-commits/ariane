@@ -42,7 +42,7 @@ Ce système n'est pas né d'un plan. Il est né d'une série d'échecs, chacun c
 
 **Le menteur.** Une source unique, par le seul jeu de la fraîcheur, finissait par paraître plus certaine qu'une vérité ancienne. Leçon : il faut un **plancher de certitude** pour ce que le monde a corroboré, sinon le neuf supplante le vrai.
 
-**L'importance non vindiquée — puis vindiquée.** Un troisième axe (l'importance, calculée par la structure du graphe) ne montrait aucun gain sur les premiers bancs. Plutôt que de le déclarer utile par principe, on a construit un banc *exprès* pour le mettre à l'épreuve — « Ariane », du nom de la fusée : ça passe ou ça casse au décollage. Verdict : l'importance sert sur son vrai terrain (retrouver un fait capital jamais consulté), *et* le banc a révélé une limite plus profonde ailleurs (l'oubli binaire). Le système a même corrigé son propre verdict initial, trop indulgent.
+**L'importance non vindiquée — puis vindiquée.** Un troisième axe (l'importance, calculée par la structure du graphe) ne montrait aucun gain sur les premiers bancs. Plutôt que de le déclarer utile par principe, on a construit un banc *exprès* pour le mettre à l'épreuve — « Ariane », du nom de la fusée : ça passe ou ça casse au décollage. Verdict : l'importance sert sur son vrai terrain (retrouver un fait capital jamais consulté), *et* le banc a révélé une limite plus profonde ailleurs (l'oubli binaire). Le système a même corrigé son propre verdict initial, trop indulgent. *(Cet oubli binaire a depuis été corrigé : la dormance n'est plus un interrupteur muet/présent mais une pente — un fait rare bien corroboré redevient audible en rang bas malgré des mois sans consultation, tandis que le fait fragile reste en bas. La même leçon — remplacer un couperet par un dégradé — appliquée une fois de plus.)*
 
 Six murs, six principes. Aucun n'a été caché ; chacun est documenté dans le dépôt.
 
@@ -56,12 +56,14 @@ Quatre configurations, mêmes questions, vérité-terrain établie à la main (j
 
 | Configuration | Bonnes réponses | « Confidently wrong » |
 |---|---|---|
-| Agent nu | ~33 % | majoritaire — affirme des faits périmés, se croit en 2023 |
-| RAG, notes bien tenues | ~92 % | 0 |
-| Notre mémoire (tri) | ~83 % | 0 |
-| RAG, notes naïves | 0/5 | 5/5 — sert le périmé et les menteurs avec aplomb |
+| Agent nu | ~57 % | 2-3 — affirme des faits périmés (Scholz chancelier, Alstom au CAC) |
+| RAG, notes bien tenues | 93 % | 0 |
+| Notre mémoire (tri) | 93 % | 0 |
+| RAG, notes naïves | 40 % | 3/3 — sert le périmé et les menteurs avec aplomb |
 
-Le résultat est honnête, et il dérange : **un RAG bien nourri, avec un bon modèle, trie aussi bien que nous — voire un peu mieux sur la justesse brute (92 % contre 83 %).** Quand chaque note porte sa date en clair, le modèle lit « sortie en septembre 2025, on est en juin 2026 » et conclut seul. La thèse naïve « le tri bat le rappel » ne tient pas dans ce cas. Sur ce qui compte vraiment, les deux sont à égalité : **zéro erreur d'assurance** sur les douze questions.
+Le résultat est honnête, et il dérange : **un RAG bien nourri, avec un bon modèle, trie aussi bien que nous — à égalité sur la justesse brute (93 % chacun).** Quand chaque note porte sa date en clair, le modèle lit « sortie en septembre 2025, on est en juin 2026 » et conclut seul. La thèse naïve « le tri bat le rappel » ne tient pas dans ce cas. Sur ce qui compte vraiment, les deux sont à égalité : **zéro erreur d'assurance** sur les quatorze questions.
+
+Une précision honnête s'impose ici, car elle nuance le tableau : l'agent nu n'est pas si démuni qu'on pourrait le croire. Le modèle local connaît déjà certains faits récents (il sait que Merz est chancelier — sa coupure d'entraînement est récente). Le contraste n'éclate donc pas partout : il éclate sur l'**obscur vérifiable**, les faits qu'aucun modèle n'a en mémoire — les sorties du CAC 40 de 2025, par exemple. C'est là, sur ce que le monde a changé sans que personne de célèbre en parle, que la mémoire fait la différence.
 
 Mais regardez la dernière ligne. Dès que les notes ne sont **pas** disciplinées — le cas réel le plus fréquent — le RAG s'effondre : il ressort l'ancien et le nouveau sans les départager, et sert le menteur comme la vérité. Notre mémoire, elle, n'a produit **aucune** erreur d'assurance sur tout le test.
 
@@ -77,7 +79,7 @@ Un RAG trie *si* on l'a bien nourri. Une mémoire structurée trie *parce que* l
 
 Un labo honnête publie ses fissures.
 
-- **Extraction sur langage réel : ~40 %.** Le module qui transforme une phrase en fait structuré, parfait sur des énoncés synthétiques propres, chute sur le langage journalistique réel (il ne connaît ni « qualifié pour » ni « est entrée dans l'indice »). C'est le premier chantier d'une éventuelle industrialisation.
+- **Extraction sur langage réel : refondue.** Le module qui transforme une phrase en fait structuré était le goulot du système (~40 % sur le langage réel au départ). Il a été reconstruit en quatre axes indépendants — polarité, modalité, temporalité, rôle/direction — sur le modèle de la mémoire elle-même (des axes séparés plutôt qu'une décision unique). Résultat sur un banc à l'aveugle de six domaines : **zéro faux positif de polarité**, inversions de rôle corrigées (4 → 0 par dérivation des types), et une couverture portée à **~90 %** grâce à une ontologie *induite des textes* (un modèle propose, un autre retranche, l'humain valide). Le résidu est nommé : la **résolution d'entités fine** (distinguer deux entités du même type, ne pas fusionner « France » et « Business France ») reste lâche — c'est le prochain chantier.
 - **Le rendu n'expose pas la date de début de validité** des faits courants — d'où un échec sur « qui est entré dans l'indice en 2025 ? ». Limite d'affichage, pas de fond.
 - **Le cours continu** n'est pas du ressort d'une mémoire de faits : un prix qui change chaque seconde n'a pas de « date de bascule ». Le bon comportement est de le reconnaître et de ne pas l'affirmer — pas de le trancher.
 
@@ -91,7 +93,7 @@ Ce projet n'est pas seul sur ce terrain, et c'est tant mieux : le « confidently
 
 ## Pour finir
 
-Le résultat tient en une phrase : **une mémoire structurée n'est pas plus intelligente qu'un bon RAG — elle est plus fiable quand le monde est sale.** Et l'agent nu, juste à 33 % seulement — faux avec aplomb une fois sur deux — sur des faits que chacun peut vérifier, rappelle pourquoi la question mérite qu'on s'y arrête.
+Le résultat tient en une phrase : **une mémoire structurée n'est pas plus intelligente qu'un bon RAG — elle est plus fiable quand le monde est sale.** Et l'agent nu, qui affirme encore le périmé sur les faits que son entraînement n'a pas vus — des sorties d'indice, des bascules discrètes que chacun peut pourtant vérifier — rappelle pourquoi la question mérite qu'on s'y arrête.
 
 ---
 
