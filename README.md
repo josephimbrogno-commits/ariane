@@ -54,12 +54,18 @@ connecteur/     le connecteur OpenClaw (service + pont) / the OpenClaw connector
 tests/          bancs synthétiques + tests unitaires / synthetic benchmarks + unit tests
 ARTICLE_FR.md   l'article complet (français)
 ARTICLE_EN.md   the full article (English)
+CHANGELOG.md    journal des évolutions / changelog
 ```
+
+## Journal des évolutions / Changelog
+
+Voir [CHANGELOG.md](./CHANGELOG.md) pour la liste des évolutions, du plus récent au plus ancien.
+See [CHANGELOG.md](./CHANGELOG.md) for the list of changes, newest first.
 
 ## Limites assumées / Acknowledged limits
 
-Extraction sur langage réel : refondue en quatre axes (polarité, modalité, temporalité, rôle), 0 faux positif de polarité, greffier généraliste à ~90 % de couverture sur six domaines (banc à l'aveugle) · résolution d'entités fine encore lâche · le cours continu hors périmètre · prototype-laboratoire, pas un produit.
-/ Real-language extraction: rebuilt along four axes (polarity, modality, temporality, role), 0 polarity false positives, generalist extractor at ~90% coverage across six domains (blind benchmark) · fine entity resolution still loose · continuous prices out of scope · a lab prototype, not a product.
+Extraction sur langage réel : refondue en quatre axes (polarité, modalité, temporalité, rôle), 0 faux positif de polarité, greffier généraliste à ~90 % de couverture sur six domaines (banc à l'aveugle) · résolution d'entités traitée (collision par type, fragmentation par structure pondérée, acronymes courts par normalisation + malus de brièveté) · le cours continu hors périmètre · prototype-laboratoire, pas un produit.
+/ Real-language extraction: rebuilt along four axes (polarity, modality, temporality, role), 0 polarity false positives, generalist extractor at ~90% coverage across six domains (blind benchmark) · entity resolution handled (collision by type, fragmentation by weighted structure, short acronyms by normalization + brevity penalty) · continuous prices out of scope · a lab prototype, not a product.
 
 ## Licence / License
 

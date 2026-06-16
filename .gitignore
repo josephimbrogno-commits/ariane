@@ -33,6 +33,17 @@ connecteur/test_reel/chaos_resultats.json
 connecteur/test_reel/volume_wikinews.json
 connecteur/test_reel/barometre_extraction_res.json
 
+# ── INTERNE : livrables de mission (non publiés ; le dépôt = code + docs publics) ──
+connecteur/gui/
+connecteur/test_reel/DIAGNOSTIC_ENTITES.md
+connecteur/test_reel/SOCLE_TYPE.md
+connecteur/test_reel/FUSION_TYPEE.md
+connecteur/test_reel/REUNION_FRAGMENTS.md
+connecteur/test_reel/ACRONYMES_COURTS.md
+connecteur/test_reel/BANC_FRAGMENTATION.md
+connecteur/test_reel/DORMANCE_GRADUELLE.md
+connecteur/test_reel/BAROMETRE_V2.md
+
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]

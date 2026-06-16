@@ -25,7 +25,21 @@ def _norm(txt):
 
 
 def norm_nom(nom):
-    return " ".join(m for m in _norm(nom).split() if m and m not in _TITRES)
+    toks = [m for m in _norm(nom).split() if m and m not in _TITRES]
+    # ÉTAPE 2 (acronymes) : fusionner les suites de LETTRES UNIQUES issues de la ponctuation,
+    # pour que « U.S.A. » (→ « u s a ») et « USA » (→ « usa ») se réduisent à la MÊME chaîne →
+    # fusion par ÉGALITÉ DE TEXTE, hors embedding. (« Jean Pierre » : pas de lettres uniques, intact.)
+    fused, buf = [], []
+    for t in toks:
+        if len(t) == 1:
+            buf.append(t)
+        else:
+            if buf:
+                fused.append("".join(buf)); buf = []
+            fused.append(t)
+    if buf:
+        fused.append("".join(buf))
+    return " ".join(fused)
 
 
 def norm_valeur(v):
@@ -72,6 +86,13 @@ def types_compatibles(t1, t2):
     if f1 is None or f2 is None:
         return True            # inconnu/ambigu d'un côté → fallback (comportement actuel)
     return f1 == f2
+
+
+def _malus_brievete(nom1, nom2):
+    """Malus de fiabilité de l'embedding selon la BRIÈVETÉ du plus court libellé (sans espaces).
+    Franc à 2 lettres, s'efface vite : un sigle court a un embedding peu discriminant."""
+    L = min(len(norm_nom(nom1).replace(" ", "")), len(norm_nom(nom2).replace(" ", ""))) or 1
+    return config.ACRONYME_MALUS_MAX * (config.ACRONYME_L_REF / max(L, config.ACRONYME_L_REF)) ** 2
 
 
 def parse_date(s):
@@ -141,6 +162,7 @@ class GrapheMemoire:
         self._fid = 0
         self.journal_resolution = []
         self.journal_type_conflit = []      # SOCLE TYPE : un type différent arrive sur un nœud déjà typé
+        self.journal_reunion = []           # RÉUNION : fragments réunis (garde/absorbe/score/voisins) — auditable
 
     # ── RÉSOLUTION D'ENTITÉS ─────────────────────────────────────────────
     def _poser_type(self, e, type_attendu):
@@ -177,7 +199,8 @@ class GrapheMemoire:
             s = float(v @ e.embedding)
             if s > score:
                 score, best = s, e
-        if best is not None and score >= config.V2_RESOL_SEUIL and types_compatibles(best.type, type_attendu):
+        if (best is not None and types_compatibles(best.type, type_attendu)
+                and (score - _malus_brievete(nom, best.nom)) >= config.V2_RESOL_SEUIL):  # ÉTAPE 3 : sigles courts
             if nom not in best.alias:
                 best.alias.append(nom)
             self._poser_type(best, type_attendu)
@@ -417,11 +440,66 @@ class GrapheMemoire:
             del self.entites[pid]
         return fusions
 
+    def reunir_fragments(self):
+        """RÉUNION OPPORTUNISTE des fragments (MSFT/Microsoft). Déclenchée par la STRUCTURE pondérée
+        par la rareté, sous GATE de même famille connue. Embedding en appoint (jamais déclencheur seul).
+        Réunit e2 dans e1 si le score de voisins communs dépasse le seuil. Réversible (journal + alias)."""
+        # voisins de chaque entité (l'autre bout de chaque fait) + df (en combien d'entités un voisin apparaît)
+        vois = {eid: set() for eid in self.entites}
+        for f in self.faits.values():
+            nk = ("e", f.objet_id) if f.objet_id is not None else ("v", norm_valeur(f.objet))
+            vois.setdefault(f.sujet_id, set()).add(nk)
+            if f.objet_id is not None:
+                vois.setdefault(f.objet_id, set()).add(("e", f.sujet_id))
+        df = {}
+        for s in vois.values():
+            for nk in s:
+                df[nk] = df.get(nk, 0) + 1
+
+        ids, absorbes = list(self.entites), set()
+        for i in range(len(ids)):
+            if ids[i] in absorbes:
+                continue
+            e1 = self.entites[ids[i]]
+            fam = _famille(e1.type)
+            if fam is None:                          # GATE : famille connue requise (précision d'abord)
+                continue
+            for j in range(i + 1, len(ids)):
+                if ids[j] in absorbes:
+                    continue
+                e2 = self.entites[ids[j]]
+                if _famille(e2.type) != fam:          # GATE : MÊME famille connue, sinon jamais réunir
+                    continue
+                communs = (vois[e1.id] & vois[e2.id]) - {("e", e1.id), ("e", e2.id)}
+                if not communs:                       # pas de pont structurel → réunion opportuniste : on s'abstient
+                    continue
+                score = sum(1.0 / df[nk] for nk in communs)             # rareté : voisin banal pèse peu
+                score += config.REUNION_EMBED_BONUS * max(0.0, float(e1.embedding @ e2.embedding))
+                if score >= config.REUNION_SEUIL:
+                    for f in self.faits.values():
+                        if f.sujet_id == e2.id:
+                            f.sujet_id = e1.id
+                        if f.objet_id == e2.id:
+                            f.objet_id = e1.id
+                    for nom in [e2.nom] + e2.alias:
+                        if nom not in e1.alias and norm_nom(nom) != norm_nom(e1.nom):
+                            e1.alias.append(nom)       # trace d'origine (réversibilité minimale)
+                    self.journal_reunion.append(
+                        {"garde": e1.nom, "absorbe": e2.nom, "famille": fam, "score": round(score, 3),
+                         "voisins_decisifs": [nk for nk in communs if 1.0 / df[nk] >= 0.25]})
+                    vois[e1.id] |= vois[e2.id]
+                    absorbes.add(e2.id)
+        for pid in absorbes:
+            del self.entites[pid]
+        return self.journal_reunion[-len(absorbes):] if absorbes else []
+
     def consolider(self, date, avant_dormance=None):
-        """Décroissances → promotion → fusion → plancher → [hook options] → dormance. Rapport."""
+        """Décroissances → promotion → fusion → [réunion fragments] → plancher → [hook] → dormance."""
         self._decroitre(date)
         promus = self.promouvoir()
         fusions = self.fusionner_entites()
+        if config.OPT_REUNION_FRAGMENTS:
+            self.reunir_fragments()
         self.appliquer_plancher_certitude()
         if avant_dormance is not None:        # hook options (importance, typologie) — injecté
             avant_dormance(self)
