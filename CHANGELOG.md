@@ -3,8 +3,8 @@
 > Journal des évolutions du projet. L'**article** raconte *pourquoi* ; ce changelog liste *quoi* et *quand*.
 > Change log. The **article** tells *why*; this changelog lists *what* and *when*.
 >
-> ⚠️ Les dates marquées `[à compléter]` sont à remplacer par les vraies dates de commit (via `git log`).
-> Dates marked `[to fill]` should be replaced with the real commit dates (via `git log`).
+> Les dates de version sont celles des **commits réels** (via `git log`).
+> Version dates are those of the **actual commits** (via `git log`).
 > Ne lister ici que ce qui est **réellement poussé** dans le dépôt — jamais le travail en cours.
 > List here only what is **actually pushed** to the repo — never work in progress.
 
