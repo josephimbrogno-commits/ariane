@@ -28,6 +28,81 @@ def _norm(texte):
     return s.replace("’", "'").replace("`", "'")
 
 
+# ── PROPRETÉ À LA SOURCE : un PRONOM/INDÉFINI ne devient JAMAIS un nœud (brique 1) ────────────
+# Ressource FR GÉNÉRALE (linguistique, pas tirée d'un texte). Un libellé d'entité qui n'est QU'un
+# pronom ou un indéfini ne désigne aucune entité résolue → on refuse de créer le nœud et, faute
+# d'entité nommée pour porter le fait, on s'abstient. On NE RÉSOUT PAS le pronom ici (« il » → Pierre) :
+# c'est l'affaire de la fenêtre (brique 2) et de l'appel mémoire (brique 3). Précision d'abord :
+# mieux vaut un fait abstenu qu'un nœud-poubelle. La comparaison est EXACTE (libellé entier normalisé),
+# jamais en sous-chaîne — « La Poste », « Personne Morale SA », « Cela Inc. » ne sont PAS touchés.
+_PRONOMS_INDEFINIS = frozenset({
+    # personnels (sujet + disjoints) et réfléchis emphatiques
+    "je", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles",
+    "moi", "toi", "lui", "soi", "eux",
+    "moi-meme", "toi-meme", "lui-meme", "elle-meme", "soi-meme",
+    "nous-memes", "vous-memes", "eux-memes", "elles-memes",
+    # démonstratifs pronoms (PAS « ce/cette » déterminants, ni « ce + nom »)
+    "celui", "celle", "ceux", "celles",
+    "celui-ci", "celui-la", "celle-ci", "celle-la",
+    "ceux-ci", "ceux-la", "celles-ci", "celles-la",
+    "ceci", "cela", "ca",
+    # relatifs/interrogatifs composés (les pronoms, pas « qui/que/quoi » nus, trop ambigus)
+    "lequel", "laquelle", "lesquels", "lesquelles", "quiconque",
+    # indéfinis
+    "personne", "quelqu'un", "quelque chose", "rien", "nul", "nulle",
+    "aucun", "aucune", "chacun", "chacune", "certains", "certaines",
+    "plusieurs", "autrui", "untel", "d'aucuns",
+    "l'un", "l'autre", "les uns", "les autres", "un autre", "une autre", "d'autres",
+    "tout le monde", "n'importe qui", "n'importe quoi",
+})
+
+
+def _est_pronom(libelle):
+    """True si le libellé, normalisé et débarrassé de la ponctuation de bord, EST exactement un
+    pronom/indéfini (et donc ne désigne aucune entité résolue). Comparaison sur le mot ENTIER."""
+    t = _norm(libelle).strip(" \t.,;:!?\"«»()[]…")
+    return t in _PRONOMS_INDEFINIS
+
+
+# ── FENÊTRE DE CORÉFÉRENCE (brique 2) : rattacher un pronom à un antécédent NOMMÉ PROCHE ──────
+SYS_COREF = (
+    "Tu fais de la RÉSOLUTION DE CORÉFÉRENCE, rien d'autre. On te donne un CONTEXTE (phrases "
+    "précédentes) et une PHRASE cible contenant un PRONOM. Tu dois dire à quelle entité NOMMÉE "
+    "(nom propre : personne, organisation, lieu…) ce pronom renvoie.\n"
+    "RÈGLES STRICTES :\n"
+    "- L'entité doit être PRÉSENTE telle quelle dans le contexte ou la phrase. N'invente JAMAIS un "
+    "nom absent du texte.\n"
+    "- Si DEUX entités nommées ou plus pourraient convenir → statut « ambigu » (on ne devine pas).\n"
+    "- Si AUCUNE entité nommée ne convient (antécédent absent / trop loin) → statut « aucun ».\n"
+    "- Dans le moindre doute : « ambigu » ou « aucun ». Mieux vaut ne pas résoudre que mal résoudre.\n"
+    'Réponds UNIQUEMENT en JSON strict : {"entite":"<nom propre exact ou null>",'
+    '"statut":"resolu|ambigu|aucun"}'
+)
+
+
+def _resoudre_coref(llm, pronom, role, phrase, contexte):
+    """Tente de rattacher `pronom` (en position `role`) à une entité NOMMÉE du contexte proche.
+    Renvoie le nom résolu, ou None si non résolu / ambigu / hallucination détectée (→ brique 1
+    reprend : abstention). Précision d'abord : on n'accepte qu'un antécédent RÉELLEMENT présent."""
+    d = llm.json(f"CONTEXTE :\n{contexte}\n\nPHRASE : « {phrase} »\n\n"
+                 f"Le pronom « {pronom} » (position {role}) renvoie à quelle entité nommée ?",
+                 systeme=SYS_COREF)
+    if not isinstance(d, dict):
+        return None
+    if _norm(d.get("statut", "")).strip() != "resolu":
+        return None                                   # ambigu / aucun → on n'attache pas
+    ent = str(d.get("entite") or "").strip()
+    if not ent or _est_pronom(ent):
+        return None                                   # vide ou encore un pronom → échec
+    # ANTI-HALLUCINATION : chaque jeton significatif du nom résolu doit apparaître dans le contexte
+    # ou la phrase. Le LLM ne peut pas inventer un antécédent absent du texte (précision d'abord).
+    foin = _norm(contexte + " " + phrase)
+    toks = [t for t in re.findall(r"\w+", _norm(ent)) if len(t) >= 3]
+    if not toks or not all(t in foin for t in toks):
+        return None
+    return ent
+
+
 def _date(v):
     if not isinstance(v, str):
         return None
@@ -194,8 +269,10 @@ def _assigner_role(predicat, sujet, objet, type_s, type_o):
     return sujet, objet, type_s, type_o          # match propre, ambigu, ou non concluant → on garde
 
 
-def extraire(llm, texte):
-    """Résout les axes (grille LLM + planchers déterministes) → dict d'axes, ou None si invalide."""
+def extraire(llm, texte, contexte=None):
+    """Résout les axes (grille LLM + planchers déterministes) → dict d'axes, ou None si invalide.
+    `contexte` (phrases précédentes) active la FENÊTRE DE CORÉFÉRENCE (brique 2) : un pronom-sujet/objet
+    est rattaché à son antécédent NOMMÉ proche avant d'abstenir. Sans contexte → comportement brique 1."""
     brut = llm.json(f"Énoncé : « {texte} »\n\nRemplis la grille en JSON strict.", systeme=SYS_EXTRACTION)
     if not isinstance(brut, dict):
         return None
@@ -233,6 +310,21 @@ def extraire(llm, texte):
     # AXE RÔLE/DIRECTION : oriente par les TYPES des entités (swap si la surface est inversée)
     sujet, objet, t_s, t_o = _assigner_role(predicat, sujet, objet,
                                             brut.get("type_e_sujet"), brut.get("type_e_objet"))
+
+    # FENÊTRE DE CORÉFÉRENCE (brique 2) : un pronom-sujet/objet n'ancre aucun fait. AVANT d'abstenir,
+    # on tente de le rattacher à un antécédent NOMMÉ proche (contexte glissant). Résolu → on écrit au
+    # nom résolu (le vrai levier des faits-clés) ; non résolu / ambigu → la brique 1 reprend ci-dessous.
+    if contexte:
+        if _est_pronom(sujet):
+            sujet = _resoudre_coref(llm, sujet, "sujet", texte, contexte) or sujet
+        if _est_pronom(objet):
+            objet = _resoudre_coref(llm, objet, "objet", texte, contexte) or objet
+
+    # PROPRETÉ À LA SOURCE (brique 1) : si une extrémité reste un pronom/indéfini (non résolu), il n'y
+    # a pas d'entité nommée pour ancrer le fait → ABSTENTION COMPLÈTE (pas de nœud-pronom, pas de fait
+    # orphelin). C'est le FILET sous la fenêtre : on ne devine jamais un antécédent.
+    if _est_pronom(sujet) or _est_pronom(objet):
+        return None
     # SOCLE TYPE : le type extrait par le greffier VOYAGE jusqu'au nœud (grain fin : pays/ville/…)
     type_sujet = (_norm(t_s) or None) if t_s else None
     type_objet = (_norm(t_o) or None) if t_o else None

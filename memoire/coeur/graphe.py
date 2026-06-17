@@ -440,6 +440,19 @@ class GrapheMemoire:
             del self.entites[pid]
         return fusions
 
+    def _barre_confirmee(self, fam, communs, df, score):
+        """BARRE DE CONFIRMATION MODULÉE PAR LA FAMILLE (le score reste calculé pareil ; c'est le
+        SEUIL qui dépend de la nature de l'identité). Organisation/objet/lieu : identité RELATIONNELLE
+        → la structure partagée suffit (barre inchangée, déjà filtrée par score ≥ REUNION_SEUIL).
+        Personne : identité FORTE et unique → un seul voisin partagé est une COÏNCIDENCE, pas une
+        confirmation → exiger PLUSIEURS voisins rares (ou un score structurel très haut). Non binaire :
+        un vrai doublon de personne, qui converge sur plusieurs voisins rares, fusionne encore."""
+        if fam not in config.REUNION_FAMILLES_IDENTITE_FORTE:
+            return True
+        n_rares = sum(1 for nk in communs if 1.0 / df[nk] >= config.REUNION_RARE_MIN)
+        return (n_rares >= config.REUNION_PERSONNE_MIN_VOISINS
+                or score >= config.REUNION_SEUIL_PERSONNE_FORT)
+
     def reunir_fragments(self):
         """RÉUNION OPPORTUNISTE des fragments (MSFT/Microsoft). Déclenchée par la STRUCTURE pondérée
         par la rareté, sous GATE de même famille connue. Embedding en appoint (jamais déclencheur seul).
@@ -475,7 +488,7 @@ class GrapheMemoire:
                     continue
                 score = sum(1.0 / df[nk] for nk in communs)             # rareté : voisin banal pèse peu
                 score += config.REUNION_EMBED_BONUS * max(0.0, float(e1.embedding @ e2.embedding))
-                if score >= config.REUNION_SEUIL:
+                if score >= config.REUNION_SEUIL and self._barre_confirmee(fam, communs, df, score):
                     for f in self.faits.values():
                         if f.sujet_id == e2.id:
                             f.sujet_id = e1.id

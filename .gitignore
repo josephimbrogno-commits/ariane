@@ -43,6 +43,19 @@ connecteur/test_reel/ACRONYMES_COURTS.md
 connecteur/test_reel/BANC_FRAGMENTATION.md
 connecteur/test_reel/DORMANCE_GRADUELLE.md
 connecteur/test_reel/BAROMETRE_V2.md
+connecteur/test_reel/BANC_ROMAN.md
+connecteur/test_reel/roman_banc_vaubourg.md
+connecteur/test_reel/roman_banc_verite_terrain.md
+connecteur/test_reel/banc_roman.py
+connecteur/test_reel/banc_roman_res.json
+connecteur/test_reel/banc_roman_modeles.py
+connecteur/test_reel/banc_roman_modeles_res.json
+connecteur/test_reel/GREFFIER_VS_LLM.md
+connecteur/test_reel/GREFFIER_B1_ANTIPRONOM.md
+connecteur/test_reel/GREFFIER_B2_FENETRE.md
+connecteur/test_reel/GREFFIER_B3_MEMOIRE.md
+connecteur/test_reel/REUNION_BARRE_TYPE.md
+connecteur/test_reel/banc_reunion_type.py
 
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/

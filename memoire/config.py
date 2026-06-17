@@ -49,6 +49,16 @@ ACRONYME_MALUS_MAX = 0.12     # malus à L=2 lettres : casse UE/ONU (0.902−0.1
 ACRONYME_L_REF = 2
 
 REUNION_SEUIL = 0.30          # réglé sur le banc : voisin rare (df=2 → 0.5) passe ; banal (Genève df=5 → 0.2) non
+# ── BARRE DE CONFIRMATION MODULÉE PAR LE TYPE : l'identité forte exige PLUS de preuve structurelle ──
+# Une PERSONNE a une identité unique : deux personnes partageant UN voisin = coïncidence (elles
+# connaissent la même personne), pas un doublon → barre HAUTE (plusieurs voisins RARES requis). Une
+# ORGANISATION/objet/lieu a une identité RELATIONNELLE (Microsoft = ce qu'elle produit/dirige/où elle
+# siège) → la structure partagée EST un signal d'identité → barre INCHANGÉE. Réglé sur les DEUX bancs :
+# tue Pierre/Hélène & Camille/Tessier (1 voisin) sans toucher Microsoft/MSFT, ONU, SNCF (org, 1 voisin).
+REUNION_FAMILLES_IDENTITE_FORTE = ("personne",)  # familles à barre haute (identité NON relationnelle)
+REUNION_RARE_MIN = 0.25       # un voisin commun est « rare » si 1/df ≥ 0.25 (partagé par ≤ 4 entités)
+REUNION_PERSONNE_MIN_VOISINS = 2  # personne : ≥2 voisins RARES partagés (un seul = coïncidence → jamais fusion)
+REUNION_SEUIL_PERSONNE_FORT = 0.75  # OU un score structurel TRÈS haut (porte non binaire : un vrai doublon fort passe)
 REUNION_EMBED_BONUS = 0.0     # appoint embedding MESURÉ NUISIBLE sur le banc (il fait basculer les paires
 #                               partageant un hub banal : Paris/Marseille via France, OMS/OMM via Genève) → 0.
 #                               La structure pondérée par la rareté sépare déjà parfaitement (0.5 vs 0.2). Le
@@ -62,6 +72,26 @@ OPT_IMPORTANCE_RETRIEVAL = False  # importance dans le score de retrieval. OFF :
 OPT_DORMANCE_MODULEE = False    # dormance abaissée pour les faits importants. OFF (vindiquée en rappel libre).
 OPT_DORMANCE_RANG_GRADUEL = True  # dormant = rang baissé (pas muet), malus modulé par corroboration. ON (fix stress-test).
 OPT_REUNION_FRAGMENTS = True      # réunir les fragments (MSFT/Microsoft) par structure+famille en consolidation. ON.
+
+# ── FENÊTRE DE CORÉFÉRENCE (brique 2) : résoudre un PRONOM à son antécédent NOMMÉ proche, AVANT d'écrire ──
+# Compose avec l'anti-pronom (brique 1) : si l'extraction d'une phrase donne un sujet/objet PRONOM, on
+# élargit le contexte aux phrases précédentes et on tente de rattacher le pronom à une entité NOMMÉE.
+# Résolu sans ambiguïté → on écrit au nom résolu (le vrai levier des faits-clés) ; non résolu / AMBIGU →
+# la brique 1 reprend : abstention. Jamais de devinette (une fausse résolution = collision déguisée).
+# LOCAL seulement : l'antécédent doit être PRÉSENT dans le contexte proche. Le distant (« le commandant »
+# résolu par ce que la mémoire sait) = brique 3 (appel mémoire), HORS périmètre ici.
+OPT_FENETRE_COREF = True          # tenter la résolution de coréférence locale avant d'abstenir. ON.
+FENETRE_COREF_MAX_PHRASES = 3     # limite DURE d'élargissement en arrière (au-delà : abstention, pas tout le paragraphe)
+
+# ── APPEL MÉMOIRE (brique 3) : résoudre une référence DISTANTE à une entité CONNUE, AVANT d'écrire ──
+# Quand une référence n'est pas résoluble localement (« M. Vasseur », « le commandant », « papa » sans
+# Pierre proche), on INTERROGE la toile pour la rattacher à une entité déjà connue. RÈGLE D'OR : la
+# mémoire répond QUI (identité de la référence), JAMAIS QUOI (le contenu, qui vient du texte). Match
+# UNIQUE et confiant seulement ; sinon nœud distinct / abstention. Le texte prime sur la toile pour le
+# contenu (droit de douter de la mémoire). Conservateur d'abord : mieux vaut une référence non résolue
+# (fragment) qu'une référence mal résolue (collision + risque de BOUCLE auto-confirmante).
+OPT_APPEL_MEMOIRE = True          # rattacher une référence distante à une entité connue (qui, pas quoi). ON.
+APPEL_MEMOIRE_MAX_CANDIDATS = 12  # nb max d'entités présentées au résolveur LLM (borne le coût + le prompt)
 
 # ── Importance (option) — PageRank pondéré + croisement entité × relation ──
 IMP_DAMPING = 0.85

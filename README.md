@@ -64,8 +64,8 @@ See [CHANGELOG.md](./CHANGELOG.md) for the list of changes, newest first.
 
 ## Limites assumées / Acknowledged limits
 
-Extraction sur langage réel : refondue en quatre axes (polarité, modalité, temporalité, rôle), 0 faux positif de polarité, greffier généraliste à ~90 % de couverture sur six domaines (banc à l'aveugle) · résolution d'entités traitée (collision par type, fragmentation par structure pondérée, acronymes courts par normalisation + malus de brièveté) · le cours continu hors périmètre · prototype-laboratoire, pas un produit.
-/ Real-language extraction: rebuilt along four axes (polarity, modality, temporality, role), 0 polarity false positives, generalist extractor at ~90% coverage across six domains (blind benchmark) · entity resolution handled (collision by type, fragmentation by weighted structure, short acronyms by normalization + brevity penalty) · continuous prices out of scope · a lab prototype, not a product.
+Extraction sur langage réel : greffier refondu en quatre axes (polarité, modalité, temporalité, rôle) puis approfondi en lecture « en cascade » (lecture par idée à fenêtre variable, coréférence locale et distante, aucun pronom orphelin) — 0 faux positif de polarité, ~90 % de couverture sur six domaines (banc à l'aveugle) · résolution d'entités traitée (collision par type, fragmentation par structure pondérée modulée par le type d'identité, acronymes courts) · l'extraction de prose littéraire dense reste un terrain difficile · le cours continu hors périmètre · prototype-laboratoire, pas un produit.
+/ Real-language extraction: extractor rebuilt along four axes (polarity, modality, temporality, role) then deepened into a "cascade" reader (reading by idea with a variable window, local and distant coreference, no orphan pronoun) — 0 polarity false positives, ~90% coverage across six domains (blind benchmark) · entity resolution handled (collision by type, fragmentation by weighted structure modulated by identity type, short acronyms) · dense literary-prose extraction remains hard · continuous prices out of scope · a lab prototype, not a product.
 
 ## Licence / License
 

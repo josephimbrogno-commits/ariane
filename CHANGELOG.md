@@ -21,6 +21,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.6.0] — Greffier en cascade & réunion par type d'identité / Cascade reader & identity-type reunion — 2026-06-17
+
+**FR**
+- Ajouté — **greffier en cascade** : l'extraction ne lit plus phrase par phrase mais par IDÉE — une fenêtre de contexte qui s'élargit jusqu'à ce que l'idée soit complète (sujet nommé, référence résolue).
+- Ajouté — **coréférence locale** : un pronom (« il ») est rattaché à son antécédent nommé proche avant l'écriture.
+- Ajouté — **résolution distante par la mémoire** : une référence non résolue localement (« M. Vasseur » → Pierre) est rattachée à une entité connue en interrogeant la toile. Garde-fou : la mémoire répond *qui*, jamais *quoi* (le contenu vient toujours du texte ; droit de douter de la toile).
+- Ajouté — **propreté à la source** : un pronom non résolu ne devient jamais un nœud (abstention plutôt que nœud-poubelle).
+- Modifié — **réunion d'entités modulée par le type d'identité** : barre de confirmation haute pour les personnes (≥2 voisins rares ; un seul voisin commun = coïncidence, pas identité), inchangée pour les organisations (identité relationnelle). Corrige les sur-fusions de personnes.
+- Mesuré — 0 mauvaise attribution, 0 boucle d'auto-renforcement, extraction factuelle non régressée (0 faux positif de polarité). Résidus nommés : nœuds-descriptions, résolution relationnelle (« papa » → père).
+
+**EN**
+- Added — **cascade reader**: extraction no longer reads sentence by sentence but by IDEA — a context window that expands until the idea is complete (subject named, reference resolved).
+- Added — **local coreference**: a pronoun ("he") is attached to its nearby named antecedent before writing.
+- Added — **distant resolution via memory**: a reference unresolved locally ("Mr. Vasseur" → Pierre) is attached to a known entity by querying the web. Guardrail: memory answers *who*, never *what* (content always comes from the text; right to doubt the web).
+- Added — **cleanliness at the source**: an unresolved pronoun never becomes a node (abstention rather than a junk node).
+- Changed — **entity reunion modulated by identity type**: high confirmation bar for persons (≥2 rare shared neighbors; a single shared neighbor = coincidence, not identity), unchanged for organizations (relational identity). Fixes person over-merges.
+- Measured — 0 mis-attribution, 0 self-reinforcing loop, factual extraction not regressed (0 polarity false positives). Named residues: description-nodes, relational resolution ("dad" → father).
+
+---
+
 ## [0.5.0] — Résolution d'entités / Entity resolution — 2026-06-16
 
 **FR**

@@ -10,12 +10,33 @@ Règle d'or : on LIT la toile librement ; on ne TISSE jamais un fil sans dire d'
 Le LLM et l'embedding sont INJECTÉS (bibliothèque agnostique du modèle).
 """
 
+import re
 from datetime import datetime
 
 from . import config
-from .coeur.graphe import GrapheMemoire, parse_date, norm_valeur
+from .coeur.graphe import GrapheMemoire, parse_date, norm_valeur, _famille
 from .coeur.ontologie import PREDICATS
 from .coeur import extraction, lecture
+
+
+# ── BRIQUE 3 — APPEL MÉMOIRE : ressources de détection d'une référence DISTANTE à résoudre ────
+_TITRES_REF = {"m", "mr", "mme", "mlle", "monsieur", "madame", "mademoiselle", "dr", "pr", "me", "sieur"}
+_DESC_PREFIXES = ("le ", "la ", "l'", "les ", "mon ", "ma ", "mes ", "ton ", "ta ", "tes ",
+                  "son ", "sa ", "ses ", "notre ", "nos ", "votre ", "vos ", "leur ", "leurs ")
+_RELATIONNELS = {"papa", "maman", "pere", "mere", "fils", "fille", "frere", "soeur", "oncle", "tante",
+                 "mari", "femme", "epoux", "epouse", "voisin", "voisine", "patron", "patronne", "chef",
+                 "cousin", "cousine", "grand-pere", "grand-mere", "beau-pere", "belle-mere"}
+
+SYS_APPEL_MEMOIRE = (
+    "Tu résous l'IDENTITÉ d'une référence : QUI est-ce, parmi des entités CONNUES. Tu ne décides JAMAIS "
+    "du contenu d'un fait (le « quoi »), seulement l'identité (le « qui »). On te donne une RÉFÉRENCE et "
+    "une liste d'ENTITÉS CONNUES avec ce que la mémoire atteste d'elles.\n"
+    "La référence désigne-t-elle UNE de ces entités, de façon UNIQUE et CERTAINE ?\n"
+    "- Réponds par le NOM EXACT d'une entité de la liste SEULEMENT si c'est sûr et unique.\n"
+    "- Si plusieurs entités pourraient convenir → « ambigu ». Si aucune ne correspond → « aucun ».\n"
+    "- Ne choisis jamais par défaut ni par simple ressemblance. Dans le doute : « aucun ».\n"
+    'Réponds UNIQUEMENT en JSON strict : {"entite":"<nom exact ou null>","statut":"resolu|ambigu|aucun"}'
+)
 
 
 class Memoire:
@@ -26,6 +47,7 @@ class Memoire:
         self.embed = embed
         self.g = GrapheMemoire(embed)
         self.horloge = None        # date « maintenant » simulée optionnelle (sinon datetime.now())
+        self._fenetre = []         # phrases récemment lues (fenêtre glissante pour la coréférence, brique 2)
 
     def _date(self, date):
         return parse_date(date) or self.horloge or datetime.now()
@@ -41,9 +63,32 @@ class Memoire:
     def ecrire(self, enonce, source_id, date=None):
         """Ingère un énoncé : extraction (LLM) → résolution → conflit/corroboration/clôture.
         Retourne un compte rendu auditable des faits touchés."""
-        tri = extraction.extraire(self.llm, enonce)
+        # FENÊTRE DE CORÉFÉRENCE (brique 2) : le contexte = les phrases précédentes (capturé AVANT
+        # d'y verser l'énoncé courant). On alimente la fenêtre quel que soit le résultat — une phrase
+        # sans fait (« Il faisait froid. ») reste un antécédent valide pour résoudre un pronom suivant.
+        contexte = None
+        if config.OPT_FENETRE_COREF and self._fenetre:
+            contexte = "\n".join(self._fenetre[-config.FENETRE_COREF_MAX_PHRASES:])
+        self._fenetre.append(enonce)
+        self._fenetre = self._fenetre[-(config.FENETRE_COREF_MAX_PHRASES + 1):]  # borne la mémoire
+
+        tri = extraction.extraire(self.llm, enonce, contexte=contexte)
         if not tri:
             return {"erreur": "extraction échouée", "enonce": enonce}
+
+        # BRIQUE 3 — APPEL MÉMOIRE : rattacher une référence DISTANTE (« M. Vasseur », « le commandant »,
+        # « papa ») à une entité CONNUE de la toile, AVANT d'écrire. La mémoire répond QUI ; le QUOI
+        # (prédicat, objet, polarité) reste celui du TEXTE — le texte prime, la contradiction se résout
+        # normalement à l'ingestion. Match unique seulement ; sinon on laisse le nom tel quel (nœud neuf).
+        if config.OPT_APPEL_MEMOIRE:
+            cano = self._resoudre_memoire(tri["sujet"], tri.get("type_sujet"))
+            if cano:
+                tri["sujet"] = cano
+            if PREDICATS.get(tri["predicat"], {}).get("objet_entite"):
+                cano_o = self._resoudre_memoire(tri["objet"], tri.get("type_objet"))
+                if cano_o:
+                    tri["objet"] = cano_o
+
         # DÉRIVATION DÉTERMINISTE (V2) : les axes → l'intention, puis on l'exécute.
         intention = extraction.deriver(tri)
         act = intention["action"]
@@ -58,6 +103,54 @@ class Memoire:
         return self.g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
                               date_obs=quand, date_validite=intention.get("debut"),
                               type_sujet=tri.get("type_sujet"), type_objet=tri.get("type_objet"))
+
+    def _resoudre_memoire(self, ref, type_ref):
+        """BRIQUE 3 — APPEL MÉMOIRE. Rattacher une référence DISTANTE à une entité CONNUE de la toile.
+        Renvoie le nom canonique sur match UNIQUE et confiant, sinon None (→ nœud distinct / abstention).
+        QUI, jamais QUOI : ne touche que l'identité de la référence, pas le contenu du fait. Conservateur :
+        dans le doute, on ne devine pas (un mauvais rattachement = collision déguisée + risque de boucle)."""
+        if not ref:
+            return None
+        g = self.g
+        fam = _famille(type_ref)
+        cands = [e for e in g.entites.values()
+                 if (fam is None or _famille(e.type) == fam) and norm_valeur(e.nom) != norm_valeur(ref)]
+        if not cands:
+            return None
+        rn = extraction._norm(ref).strip()
+        toks = rn.split()
+
+        # 1) NOM / SURNOM via TITRE (structurel, sûr) : « M. Vasseur » → l'unique « … Vasseur » connu.
+        #    Le titre (M./Mme/…) signale une personne désignée par son patronyme : le surnom (tokens ≥3
+        #    après le titre) doit être inclus dans le nom d'UN SEUL candidat. 0 ou plusieurs → on n'ose pas.
+        if toks and toks[0].strip(".") in _TITRES_REF:
+            surnom = [t for t in toks[1:] if len(t) >= 3]
+            if surnom:
+                hits = [e for e in cands if set(surnom) <= set(extraction._norm(e.nom).split())]
+                return hits[0].nom if len(hits) == 1 else None
+            return None
+
+        # 2) DESCRIPTION / RELATIONNEL via LLM (conservateur) : « le commandant », « papa ». Déclenché
+        #    SEULEMENT si la référence en a la forme (article défini / mot de parenté) — sinon un nom
+        #    propre neuf (« Bertrand Sorel ») ne déclenche RIEN (inerte, pas de coût LLM).
+        head = toks[0] if toks else ""
+        if not (rn.startswith(_DESC_PREFIXES) or head in _RELATIONNELS):
+            return None
+        cc = sorted(cands, key=lambda e: -sum(1 for f in g.faits.values()
+                                              if f.sujet_id == e.id or f.objet_id == e.id))
+        cc = cc[:config.APPEL_MEMOIRE_MAX_CANDIDATS]
+        lignes = []
+        for i, e in enumerate(cc, 1):
+            att = [f"{f.predicat}={g.nom_entite(f.objet_id) if f.objet_id is not None else f.objet}"
+                   for f in g.faits.values() if f.sujet_id == e.id][:3]
+            lignes.append(f"{i}. {e.nom} — {', '.join(att) if att else 'peu attesté'}")
+        d = self.llm.json(f"RÉFÉRENCE : « {ref} »\n\nENTITÉS CONNUES :\n" + "\n".join(lignes) +
+                          "\n\nÀ qui renvoie la référence, de façon unique et certaine ?",
+                          systeme=SYS_APPEL_MEMOIRE)
+        if not isinstance(d, dict) or extraction._norm(d.get("statut", "")).strip() != "resolu":
+            return None
+        ent = str(d.get("entite") or "").strip()
+        return ent if ent in {e.nom for e in cc} else None     # anti-hallucination : un nom de la liste
 
     def _fait_clos(self, tri, source_id, date, debut, fin):
         """Intervalle fermé / fin déclarée (« de X à Y », « jusqu'en Y ») → fait DÉCLARÉ CLOS
