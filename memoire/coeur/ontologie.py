@@ -118,6 +118,44 @@ PREDICATS = {
     "concurrent_de":     {"fonctionnel": False, "volatilite": "stable",    "objet_entite": True,  "type_sujet": "organisation", "type_objet": "organisation", "desc": "concurrent / rival d'une entreprise (induit-éco)"},
     "a_lance":           {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": False, "type_sujet": "organisation", "type_objet": "oeuvre",       "desc": "lance / dévoile un produit (induit-éco)"},
     "partenaire_de":     {"fonctionnel": False, "volatilite": "changeant", "objet_entite": True,  "type_sujet": "organisation", "type_objet": "organisation", "desc": "partenaire / s'associe avec (induit-éco)"},
+
+    # ── prédicats INDUITS — ÉVÉNEMENTIEL (Prio 1 : action / droit / admin / lieux / quantités) ────
+    # L'ontologie était état-centrée ; cette couche capte l'ACTION datée (agent → action → patient).
+    "condamne":          {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": True,  "type_sujet": "organisation", "type_objet": "personne",     "desc": "une instance (tribunal, autorité) condamne une personne/organisation (induit-droit)"},
+    "poursuit":          {"fonctionnel": False, "volatilite": "stable",    "objet_entite": True,  "type_sujet": "organisation", "type_objet": "personne",     "desc": "poursuit / attaque en justice (induit-droit)"},
+    "autorise":          {"fonctionnel": False, "volatilite": "changeant", "objet_entite": False, "type_sujet": "organisation", "type_objet": "valeur",       "desc": "autorise / ordonne une action, une ouverture (induit-admin)"},
+    "interdit":          {"fonctionnel": False, "volatilite": "changeant", "objet_entite": False, "type_sujet": "organisation", "type_objet": "valeur",       "desc": "interdit / refuse une action (induit-admin)"},
+    "accorde":           {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": False, "type_sujet": "organisation", "type_objet": "valeur",       "desc": "accorde / délivre (permis, subvention, droit) (induit-admin)"},
+    "gere":              {"fonctionnel": True,  "volatilite": "changeant", "objet_entite": True,  "type_sujet": "organisation", "type_objet": "lieu",         "desc": "gère / administre un lieu ou établissement (induit-admin)"},
+    "construit_par":     {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": True,  "type_sujet": "lieu",         "type_objet": "organisation", "desc": "lieu/édifice construit ou édifié par (induit-lieu)"},
+    "date_ouverture_de": {"fonctionnel": True,  "volatilite": "immuable",  "objet_entite": False, "type_sujet": "lieu",         "type_objet": "date",         "desc": "date d'ouverture/d'inauguration d'un lieu ou établissement (induit-lieu)"},
+    "date_fermeture_de": {"fonctionnel": True,  "volatilite": "immuable",  "objet_entite": False, "type_sujet": "lieu",         "type_objet": "date",         "desc": "date de fermeture d'un lieu/établissement (induit-lieu)"},
+    "capacite_de":       {"fonctionnel": True,  "volatilite": "stable",    "objet_entite": False, "type_sujet": "lieu",         "type_objet": "valeur",       "desc": "capacité d'accueil — « peut accueillir N personnes/fidèles/spectateurs », « d'une capacité de N » (induit-lieu)"},
+    "cout_de":           {"fonctionnel": True,  "volatilite": "stable",    "objet_entite": False, "type_sujet": "oeuvre",       "type_objet": "valeur",       "desc": "coût / montant d'un projet, d'un bien (induit-éco)"},
+    "remporte_election": {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": False, "type_sujet": "personne",     "type_objet": "evenement",    "desc": "remporte / gagne une élection (induit-politique)"},
+    "succede_a":         {"fonctionnel": False, "volatilite": "changeant", "objet_entite": True,  "type_sujet": "personne",     "type_objet": "personne",     "desc": "succède à quelqu'un dans une fonction (induit-politique)"},
+    # ── ÉVÉNEMENTIEL — 2e vague (droit/justice, politique, conflit, média, lieux) ────────────────
+    "ordonne":           {"fonctionnel": False, "volatilite": "changeant", "objet_entite": False, "type_sujet": "organisation", "type_objet": "valeur",       "desc": "ordonne / enjoint une action (justice, autorité) (induit-droit)"},
+    "remplace":          {"fonctionnel": False, "volatilite": "changeant", "objet_entite": True,  "type_sujet": "personne",     "type_objet": "personne",     "desc": "remplace quelqu'un dans une fonction (induit-politique)"},
+    "annonce":           {"fonctionnel": False, "volatilite": "stable",    "objet_entite": False, "type_sujet": "personne",     "type_objet": "valeur",       "desc": "annonce / déclare publiquement (induit-média)"},
+    "provoque":          {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": False, "type_sujet": "evenement",    "type_objet": "valeur",       "desc": "provoque / entraîne (un effet, des victimes) (induit-événement)"},
+    "attaque":           {"fonctionnel": False, "volatilite": "changeant", "objet_entite": True,  "type_sujet": "groupe",       "type_objet": "lieu",         "desc": "attaque militairement un lieu/un groupe (induit-conflit)"},
+    "occupe":            {"fonctionnel": False, "volatilite": "changeant", "objet_entite": False, "type_sujet": "groupe",       "type_objet": "lieu",         "desc": "occupe militairement un territoire (induit-conflit)"},
+    "renove":            {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": True,  "type_sujet": "organisation", "type_objet": "lieu",         "desc": "rénove / réhabilite un lieu, un quartier (induit-lieu)"},
+    "signe_accord":      {"fonctionnel": False, "volatilite": "immuable",  "objet_entite": True,  "type_sujet": "organisation", "type_objet": "organisation", "desc": "signe un accord / traité / partenariat avec (induit-politique/éco)"},
+}
+
+# ── CANONISATION DES PRÉDICATS (chantier 1) : formes synonymes → UN prédicat canonique ───────────
+# Conservateur, INSPECTABLE, par CURATION (jamais une fusion automatique par similarité d'embedding —
+# leçon de la sur-fusion d'entités). On ne canonise QUE des prédicats de MÊME RELATION pour que les
+# sources s'ACCUMULENT, que les CONFLITS s'enregistrent et que la CORROBORATION se compte. La DIRECTION
+# est rétablie ensuite par l'axe rôle (signatures de type), donc « a_dirige » (personne→organisation)
+# rejoint « dirige » (organisation→personne) SANS inverser le fait. PRÉCISION D'ABORD : on NE fusionne
+# PAS les relations de NATURE différente — a_nomme (nomination), a_signe (signature), travaille_pour
+# (emploi), entraine (coach), maire_de (rôle civique) restent DISTINCTS. Dans le doute → distinct.
+CANON_PREDICATS = {
+    "pdg_de": "dirige",      # org→personne, même signature : synonyme exact de « dirige »
+    "a_dirige": "dirige",    # personne→organisation : même relation, direction rétablie par l'axe rôle
 }
 
 POIDS_IMPORTANCE = {
@@ -144,6 +182,12 @@ POIDS_IMPORTANCE = {
     "a_adopte": 0.5, "a_adhere_a": 0.5, "se_retire_de": 0.5, "a_nomme": 0.5,
     "a_pour_date": 0.4, "se_deroule_a": 0.4, "expose_a": 0.3, "date_sortie_de": 0.4, "a_interprete": 0.3,
     "a_acquis": 0.5, "chiffre_affaires_de": 0.3, "concurrent_de": 0.3, "a_lance": 0.4, "partenaire_de": 0.3,
+    # événementiel
+    "condamne": 0.5, "poursuit": 0.4, "autorise": 0.4, "interdit": 0.4, "accorde": 0.4, "gere": 0.4,
+    "construit_par": 0.4, "date_ouverture_de": 0.5, "date_fermeture_de": 0.4, "capacite_de": 0.3,
+    "cout_de": 0.3, "remporte_election": 0.5, "succede_a": 0.5,
+    "ordonne": 0.4, "remplace": 0.5, "annonce": 0.3, "provoque": 0.4, "attaque": 0.4, "occupe": 0.4,
+    "renove": 0.3, "signe_accord": 0.5,
 }
 
 GABARITS = {
@@ -236,6 +280,28 @@ GABARITS = {
     "concurrent_de":     ("{s} est concurrent de {o}", "{s} était concurrent de {o}", "Les concurrents de {s}"),
     "a_lance":           ("{s} lance {o}", "{s} a lancé {o}", "Ce que {s} a lancé"),
     "partenaire_de":     ("{s} est partenaire de {o}", "{s} était partenaire de {o}", "Les partenaires de {s}"),
+    # événementiel
+    "condamne":          ("{s} condamne {o}", "{s} a condamné {o}", "Qui {s} a condamné"),
+    "poursuit":          ("{s} poursuit {o} en justice", "{s} a poursuivi {o} en justice", "Qui {s} poursuit"),
+    "autorise":          ("{s} autorise {o}", "{s} a autorisé {o}", "Ce qu'autorise {s}"),
+    "interdit":          ("{s} interdit {o}", "{s} a interdit {o}", "Ce qu'interdit {s}"),
+    "accorde":           ("{s} accorde {o}", "{s} a accordé {o}", "Ce qu'accorde {s}"),
+    "gere":              ("{s} gère {o}", "{s} gérait {o}", "Ce que gère {s}"),
+    "construit_par":     ("{s} est construit par {o}", "{s} a été construit par {o}", "Qui a construit {s}"),
+    "date_ouverture_de": ("{s} a ouvert en {o}", "{s} a ouvert en {o}", "La date d'ouverture de {s}"),
+    "date_fermeture_de": ("{s} a fermé en {o}", "{s} a fermé en {o}", "La date de fermeture de {s}"),
+    "capacite_de":       ("{s} peut accueillir {o}", "{s} pouvait accueillir {o}", "La capacité de {s}"),
+    "cout_de":           ("le coût de {s} est {o}", "le coût de {s} était {o}", "Le coût de {s}"),
+    "remporte_election": ("{s} remporte {o}", "{s} a remporté {o}", "Les élections remportées par {s}"),
+    "succede_a":         ("{s} succède à {o}", "{s} a succédé à {o}", "À qui succède {s}"),
+    "ordonne":           ("{s} ordonne {o}", "{s} a ordonné {o}", "Ce qu'ordonne {s}"),
+    "remplace":          ("{s} remplace {o}", "{s} a remplacé {o}", "Qui {s} remplace"),
+    "annonce":           ("{s} annonce {o}", "{s} a annoncé {o}", "Ce qu'annonce {s}"),
+    "provoque":          ("{s} provoque {o}", "{s} a provoqué {o}", "Ce que provoque {s}"),
+    "attaque":           ("{s} attaque {o}", "{s} a attaqué {o}", "Qui {s} attaque"),
+    "occupe":            ("{s} occupe {o}", "{s} occupait {o}", "Ce qu'occupe {s}"),
+    "renove":            ("{s} rénove {o}", "{s} a rénové {o}", "Ce que rénove {s}"),
+    "signe_accord":      ("{s} signe un accord avec {o}", "{s} a signé un accord avec {o}", "Les accords de {s}"),
 }
 
 _ORDRE_TYPES = ["personne", "organisation", "lieu", "date", "oeuvre", "distinction",

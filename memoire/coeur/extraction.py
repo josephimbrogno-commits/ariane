@@ -19,7 +19,7 @@ Règle d'or : en cas de doute sur un axe, RIEN plutôt que le fait risqué.
 import re
 import unicodedata
 
-from .ontologie import PREDICATS, vocabulaire_pour_extraction
+from .ontologie import PREDICATS, CANON_PREDICATS, vocabulaire_pour_extraction
 
 
 def _norm(texte):
@@ -269,11 +269,11 @@ def _assigner_role(predicat, sujet, objet, type_s, type_o):
     return sujet, objet, type_s, type_o          # match propre, ambigu, ou non concluant → on garde
 
 
-def extraire(llm, texte, contexte=None):
-    """Résout les axes (grille LLM + planchers déterministes) → dict d'axes, ou None si invalide.
-    `contexte` (phrases précédentes) active la FENÊTRE DE CORÉFÉRENCE (brique 2) : un pronom-sujet/objet
-    est rattaché à son antécédent NOMMÉ proche avant d'abstenir. Sans contexte → comportement brique 1."""
-    brut = llm.json(f"Énoncé : « {texte} »\n\nRemplis la grille en JSON strict.", systeme=SYS_EXTRACTION)
+def _finaliser(brut, texte, contexte, llm):
+    """Grille LLM brute d'UN fait → dict d'axes finalisé (planchers déterministes, couverture,
+    canonisation, axe rôle, cascade b1 anti-pronom + b2 coréférence, types), ou None si invalide.
+    Logique PARTAGÉE par l'extraction SINGLE et MULTI : tout fait extrait — d'une phrase mono-fait ou
+    multi-fait — reçoit EXACTEMENT les mêmes garde-fous (0 FP polarité, anti-pronom, coréférence)."""
     if not isinstance(brut, dict):
         return None
     sujet = str(brut.get("sujet", "")).strip()
@@ -307,6 +307,11 @@ def extraire(llm, texte, contexte=None):
     if predicat not in PREDICATS or not sujet or not objet:   # 5e axe : couverture d'ontologie
         return None
 
+    # CANONISATION DES PRÉDICATS (chantier 1) : une forme synonyme (pdg_de, a_dirige) → le prédicat
+    # canonique (dirige), AVANT l'axe rôle — pour que les sources s'accumulent et les conflits
+    # s'enregistrent. La direction sera (r)établie juste après par _assigner_role via les signatures.
+    predicat = CANON_PREDICATS.get(predicat, predicat)
+
     # AXE RÔLE/DIRECTION : oriente par les TYPES des entités (swap si la surface est inversée)
     sujet, objet, t_s, t_o = _assigner_role(predicat, sujet, objet,
                                             brut.get("type_e_sujet"), brut.get("type_e_objet"))
@@ -333,6 +338,48 @@ def extraire(llm, texte, contexte=None):
             "type_sujet": type_sujet, "type_objet": type_objet,
             "polarite": pol, "modalite": mod, "temporalite": temp,
             "date_debut": deb, "date_fin": fin}
+
+
+SYS_EXTRACTION_MULTI = SYS_EXTRACTION.split("Réponds UNIQUEMENT")[0] + (
+    "Une phrase peut contenir PLUSIEURS faits DISTINCTS (ex. « né en 1973 à Toulouse, joueur de rugby » "
+    "= date de naissance + lieu de naissance + profession). EXTRAIS-LES TOUS, chacun comme une entrée "
+    "COMPLÈTE de la grille (avec SES propres axes). N'invente RIEN ; n'éclate pas un fait unique en "
+    "morceaux artificiels. Si la phrase ne porte qu'un fait, renvoie une seule entrée.\n"
+    "Un ADJECTIF DE NATIONALITÉ attaché à une personne (« joueur FRANÇAIS », « philologue AMÉRICAIN », "
+    "« cycliste BELGE ») est un fait SÉPARÉ : a_nationalite(personne)=la nationalité — ne le fonds PAS "
+    "dans la profession (profession_de garde le métier seul : « joueur de rugby », « philologue »).\n"
+    "Réponds UNIQUEMENT en JSON strict :\n"
+    '{"faits":[{"sujet":"…","predicat":"…","objet":"…","type_e_sujet":"…","type_e_objet":"…",'
+    '"polarite":"affirmee|niee|litote|double_negation",'
+    '"modalite":"accompli|projete|rapporte|nie_rapporte",'
+    '"temporalite":"courant|debut_seul|fin_seule|intervalle_ferme|occurrence|sans_date",'
+    '"date_debut":"AAAA-MM|AAAA|null","date_fin":"AAAA-MM|AAAA|null"}]}'
+)
+
+
+def extraire(llm, texte, contexte=None):
+    """SINGLE (inchangé) : la grille d'UN fait. Conserve le comportement historique (barometre, bancs).
+    `contexte` active la coréférence (brique 2) ; sans contexte → comportement brique 1."""
+    brut = llm.json(f"Énoncé : « {texte} »\n\nRemplis la grille en JSON strict.", systeme=SYS_EXTRACTION)
+    return _finaliser(brut, texte, contexte, llm)
+
+
+def extraire_liste(llm, texte, contexte=None):
+    """MULTI-TRIPLETS : extrait TOUS les faits distincts d'une phrase (1..N). Chaque fait passe par la
+    MÊME `_finaliser` que le single → mêmes garde-fous (0 FP, anti-pronom, coréférence). Dé-doublonné."""
+    d = llm.json(f"Énoncé : « {texte} »\n\nExtrais TOUS les faits distincts, en JSON strict.",
+                 systeme=SYS_EXTRACTION_MULTI)
+    faits = d.get("faits") if isinstance(d, dict) else None
+    if not isinstance(faits, list):
+        return []
+    out, vus = [], set()
+    for b in faits:
+        f = _finaliser(b, texte, contexte, llm)
+        if f:
+            cle = (_norm(f["sujet"]), f["predicat"], _norm(f["objet"]))
+            if cle not in vus:
+                vus.add(cle); out.append(f)
+    return out
 
 
 def deriver(axes):

@@ -72,14 +72,26 @@ class Memoire:
         self._fenetre.append(enonce)
         self._fenetre = self._fenetre[-(config.FENETRE_COREF_MAX_PHRASES + 1):]  # borne la mémoire
 
-        tri = extraction.extraire(self.llm, enonce, contexte=contexte)
-        if not tri:
+        # MULTI-TRIPLETS (chantier AJOUTER) : une phrase peut porter PLUSIEURS faits. Chaque fait passe
+        # par la MÊME finalisation (planchers, anti-pronom, coréférence) et le MÊME `_ecrire_un`.
+        if config.OPT_MULTI_TRIPLETS:
+            tris = extraction.extraire_liste(self.llm, enonce, contexte=contexte)
+        else:
+            t = extraction.extraire(self.llm, enonce, contexte=contexte)
+            tris = [t] if t else []
+        if not tris:
             return {"erreur": "extraction échouée", "enonce": enonce}
+        quand = self._date(date)
+        rapports = [self._ecrire_un(tri, source_id, quand) for tri in tris]
+        if len(rapports) == 1:
+            return rapports[0]
+        return {"action": " ; ".join(str(r.get("action") or r.get("erreur") or "") for r in rapports),
+                "n_faits": len(rapports), "faits": rapports}
 
-        # BRIQUE 3 — APPEL MÉMOIRE : rattacher une référence DISTANTE (« M. Vasseur », « le commandant »,
-        # « papa ») à une entité CONNUE de la toile, AVANT d'écrire. La mémoire répond QUI ; le QUOI
-        # (prédicat, objet, polarité) reste celui du TEXTE — le texte prime, la contradiction se résout
-        # normalement à l'ingestion. Match unique seulement ; sinon on laisse le nom tel quel (nœud neuf).
+    def _ecrire_un(self, tri, source_id, quand):
+        """Ingère UN fait extrait : brique 3 (appel mémoire, qui-pas-quoi) → dérivation → exécution."""
+        # BRIQUE 3 — APPEL MÉMOIRE : rattacher une référence DISTANTE à une entité CONNUE, AVANT d'écrire.
+        # La mémoire répond QUI ; le QUOI reste celui du TEXTE (le texte prime). Match unique seulement.
         if config.OPT_APPEL_MEMOIRE:
             cano = self._resoudre_memoire(tri["sujet"], tri.get("type_sujet"))
             if cano:
@@ -89,10 +101,8 @@ class Memoire:
                 if cano_o:
                     tri["objet"] = cano_o
 
-        # DÉRIVATION DÉTERMINISTE (V2) : les axes → l'intention, puis on l'exécute.
-        intention = extraction.deriver(tri)
+        intention = extraction.deriver(tri)        # DÉRIVATION DÉTERMINISTE (V2)
         act = intention["action"]
-        quand = self._date(date)
         if act == "RIEN":
             return {"action": "RIEN — " + intention.get("raison", "doute"),
                     "relation": f'{tri["predicat"]}({tri["sujet"]})={tri["objet"]}'}
@@ -161,6 +171,8 @@ class Memoire:
         res = g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
                         date_obs=d_obs, date_validite=debut,
                         type_sujet=tri.get("type_sujet"), type_objet=tri.get("type_objet"))
+        if not res.get("touches"):          # ingestion rejetée (ex. fait auto-référentiel) → rien à clore
+            return res
         f = res["touches"][-1]
         g.clore_fait(f, source_id, parse_date(fin) or date)
         return {"action": "FAIT CLOS (intervalle/fin déclaré) — « était… jusqu'à »",

@@ -56,6 +56,28 @@ connecteur/test_reel/GREFFIER_B2_FENETRE.md
 connecteur/test_reel/GREFFIER_B3_MEMOIRE.md
 connecteur/test_reel/REUNION_BARRE_TYPE.md
 connecteur/test_reel/banc_reunion_type.py
+connecteur/test_reel/FAISABILITE_CORPUS_WIKI.md
+connecteur/test_reel/tri_vrac_e1.py
+connecteur/test_reel/tri_vrac_e1_res.json
+connecteur/test_reel/TRI_VRAC_E1.md
+connecteur/test_reel/canon_predicats_test.py
+connecteur/test_reel/CANON_PREDICATS.md
+connecteur/test_reel/_extr_venv/
+connecteur/test_reel/_mrebel_probe.py
+connecteur/test_reel/banc_extracteurs.py
+connecteur/test_reel/banc_extracteurs_res.json
+connecteur/test_reel/BANC_EXTRACTEURS.md
+connecteur/test_reel/boucle_cage.py
+connecteur/test_reel/boucle_cage_journal.json
+connecteur/test_reel/BOUCLE_CAGE.md
+connecteur/test_reel/ARCHITECTURE_TECHNIQUE.md
+connecteur/test_reel/cage_objectif_enrichi.py
+connecteur/test_reel/cage_objectif_enrichi_res.json
+connecteur/test_reel/OBJECTIF_ENRICHI.md
+connecteur/test_reel/banc_cache.py
+connecteur/test_reel/banc_cache_res.json
+connecteur/test_reel/BANC_CACHE.md
+connecteur/test_reel/_banc_cache/
 
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
@@ -78,3 +100,12 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+connecteur/test_reel/run_regler_supervise.py
+connecteur/test_reel/run_regler_supervise_res.json
+connecteur/test_reel/MULTI_TRIPLETS.md
+connecteur/test_reel/_banc_cache/banc_cache_couteux_res.json
+connecteur/test_reel/_banc_cache/proc_texte_long.py
+connecteur/test_reel/_banc_cache/proc_bataille.py
+connecteur/test_reel/_banc_cache/proc_justice.py
+connecteur/test_reel/COMPTE_RENDU_CAGE_A_EVENEMENTIEL.md

@@ -25,7 +25,13 @@ def _norm(txt):
 
 
 def norm_nom(nom):
-    toks = [m for m in _norm(nom).split() if m and m not in _TITRES]
+    toks = [m for m in _norm(nom).split() if m]
+    # Retirer les TITRES seulement EN TÊTE (« M. Vasseur » → « vasseur », « Le Louvre » → « louvre »),
+    # mais GARDER une initiale MÉDIANE : « William M. Calder » garde « m » → distinct de « William Calder »
+    # (grand-père ≠ petit-fils homonymes). Sans ça, « M. » médian est pris pour le titre « Monsieur ».
+    while toks and toks[0] in _TITRES:
+        toks.pop(0)
+    toks = toks or [m for m in _norm(nom).split() if m]   # secours : un nom 100% titres reste lui-même
     # ÉTAPE 2 (acronymes) : fusionner les suites de LETTRES UNIQUES issues de la ponctuation,
     # pour que « U.S.A. » (→ « u s a ») et « USA » (→ « usa ») se réduisent à la MÊME chaîne →
     # fusion par ÉGALITÉ DE TEXTE, hors embedding. (« Jean Pierre » : pas de lettres uniques, intact.)
@@ -40,6 +46,25 @@ def norm_nom(nom):
     if buf:
         fused.append("".join(buf))
     return " ".join(fused)
+
+
+# ── HOMONYMES : un marqueur GÉNÉRATIONNEL distingue deux personnes au même patronyme ──────────
+# « William Calder III » (petit-fils) ≠ « William M. Calder » (grand-père) ; « Henri IV » ≠ « Henri II » ;
+# « … Jr » ≠ « … Sr ». On retient les ordinaux NON ambigus (pas i/v/x, qui sont aussi des initiales).
+_ORDINAUX = {"ii", "iii", "iv", "vi", "vii", "viii", "ix", "jr", "sr", "junior", "senior"}
+
+
+def _marqueur_gen(nom):
+    return frozenset(t for t in norm_nom(nom).split() if t in _ORDINAUX)
+
+
+def _homonyme_distinct(n1, n2):
+    """True si n1 et n2 sont deux NOMS COMPLETS (≥2 tokens) portant des marqueurs générationnels
+    DIFFÉRENTS (III vs aucun/II/Jr…) → personnes distinctes, ne pas fusionner. Un patronyme NU (1 token)
+    reste fusionnable (abréviation : « Calder » → « …Calder III »). Précision d'abord."""
+    if len(norm_nom(n1).split()) < 2 or len(norm_nom(n2).split()) < 2:
+        return False
+    return _marqueur_gen(n1) != _marqueur_gen(n2)
 
 
 def norm_valeur(v):
@@ -200,6 +225,7 @@ class GrapheMemoire:
             if s > score:
                 score, best = s, e
         if (best is not None and types_compatibles(best.type, type_attendu)
+                and not _homonyme_distinct(nom, best.nom)           # HOMONYMES : grand-père ≠ petit-fils (III)
                 and (score - _malus_brievete(nom, best.nom)) >= config.V2_RESOL_SEUIL):  # ÉTAPE 3 : sigles courts
             if nom not in best.alias:
                 best.alias.append(nom)
@@ -255,6 +281,9 @@ class GrapheMemoire:
         if spec["objet_entite"]:
             objet_e, _ = self.resoudre(objet, date_obs, type_objet)
             objet_id, objet_aff = objet_e.id, objet_e.nom
+            if objet_id == sujet_e.id:        # AUTO-RÉFÉRENCE (sujet==objet) : non-sens (« X parent de X »),
+                return {"action": "REJET (fait auto-référentiel)",  # symptôme d'une collision d'homonymes
+                        "touches": [], "sujet": sujet_e}
 
         cle_new = objet_id if objet_id is not None else norm_valeur(objet_aff)
         existants = self.faits_de(sujet_e.id, predicat)

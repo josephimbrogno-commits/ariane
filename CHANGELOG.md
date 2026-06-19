@@ -21,6 +21,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.7.0] — Canonisation des prédicats, multi-triplets & ontologie événementielle / Predicate canonicalization, multi-triplets & event ontology — 2026-06-19
+
+**FR**
+- Ajouté — **canonisation de prédicats** : des formes de surface synonymes d'une **même** relation → un prédicat canonique (table curée, jamais d'embedding ; la direction est rétablie ensuite par l'axe rôle), pour que la corroboration s'accumule et que les conflits s'enregistrent. Précision d'abord : les relations de **nature différente** restent distinctes (dans le doute → distinct).
+- Ajouté — **multi-triplets** : plusieurs faits extraits d'un énoncé dense (« né en 1973 à Toulouse, joueur de rugby » → date + lieu + profession), chacun passant par la **même** finalisation que le single (mêmes planchers 0 faux positif, anti-pronom, coréférence). Interrupteur de rollback (`OPT_MULTI_TRIPLETS`).
+- Ajouté — **nationalité** : un adjectif de nationalité attaché à une personne devient un fait **séparé** (`a_nationalite`) au lieu d'être fondu dans la profession.
+- Ajouté — **désambiguïsation d'homonymes** : marqueur générationnel (III ≠ Jr ≠ Sr), conservation de l'initiale médiane (« William M. Calder » ≠ « William Calder »), rejet des faits auto-référentiels (X relation X). Limite nommée : la parenté grand-père/petit-fils homonyme n'est pas résoluble par le nom seul.
+- Ajouté — **ontologie événementielle** : 86 → 107 prédicats (droit/justice, administration, lieux/quantités, conflit, politique, média). L'extraction passe de l'« état » à l'« événement » (condamne, accorde, autorise, attaque, occupe, signe un accord…).
+- Mesuré — confirmé sur un **banc caché indépendant** (loop-blind) : rappel élargi et nouveaux registres couverts, 0 *confidently-wrong*, 0 sur-fusion, extraction factuelle non régressée (0 faux positif de polarité), déterministe inchangé. Fronts ouverts nommés : **précision de sélection** du prédicat (mis-picks) et **temps de traitement au volume**.
+
+**EN**
+- Added — **predicate canonicalization**: synonymous surface forms of the **same** relation → one canonical predicate (curated table, never embeddings; direction is then restored by the role axis), so corroboration accumulates and conflicts register. Precision first: relations of a **different nature** stay distinct (when in doubt → distinct).
+- Added — **multi-triplet** extraction from a dense statement ("born in 1973 in Toulouse, a rugby player" → date + place + profession), each fact passing through the **same** finalization as the single path (same 0-false-positive floors, anti-pronoun, coreference). Rollback switch (`OPT_MULTI_TRIPLETS`).
+- Added — **nationality**: a nationality adjective attached to a person becomes a **separate** fact (`a_nationalite`) instead of being fused into the profession.
+- Added — **homonym disambiguation**: generational marker (III ≠ Jr ≠ Sr), middle-initial preservation ("William M. Calder" ≠ "William Calder"), rejection of self-referential facts (X relation X). Named limit: homonymous grandfather/grandson kinship is not resolvable by name alone.
+- Added — **event ontology**: 86 → 107 predicates (law/justice, administration, places/quantities, conflict, politics, media). Extraction moves from "state" to "event" (convicts, grants, authorizes, attacks, occupies, signs an agreement…).
+- Measured — confirmed on an **independent held-out benchmark** (loop-blind): broader recall and new registers covered, 0 *confidently-wrong*, 0 over-merge, factual extraction not regressed (0 polarity false positives), deterministic tests unchanged. Open fronts named: predicate **selection precision** (mis-picks) and **processing time at volume**.
+
+---
+
 ## [0.6.0] — Greffier en cascade & réunion par type d'identité / Cascade reader & identity-type reunion — 2026-06-17
 
 **FR**

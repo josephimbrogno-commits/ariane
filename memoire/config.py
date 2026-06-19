@@ -93,6 +93,12 @@ FENETRE_COREF_MAX_PHRASES = 3     # limite DURE d'élargissement en arrière (au
 OPT_APPEL_MEMOIRE = True          # rattacher une référence distante à une entité connue (qui, pas quoi). ON.
 APPEL_MEMOIRE_MAX_CANDIDATS = 12  # nb max d'entités présentées au résolveur LLM (borne le coût + le prompt)
 
+# ── EXTRACTION MULTI-TRIPLETS (chantier AJOUTER) : N faits par phrase au lieu d'UN ────────────
+# Une phrase dense (« né en 1973 à Toulouse, joueur de rugby ») porte plusieurs faits ; en extraire
+# UN seul plafonne le rappel (mesuré : banc caché Wikidata 20 %). On extrait TOUS les faits distincts,
+# chacun passant par la MÊME finalisation (planchers 0-FP, anti-pronom, coréférence) que le single.
+OPT_MULTI_TRIPLETS = True         # ecrire() extrait plusieurs faits par phrase. OFF = comportement single historique.
+
 # ── Importance (option) — PageRank pondéré + croisement entité × relation ──
 IMP_DAMPING = 0.85
 IMP_ALPHA = 0.7
