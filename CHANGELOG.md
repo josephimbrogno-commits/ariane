@@ -21,6 +21,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.8.0] — Abstention de prédicat & ingestion parallèle / Predicate abstention & parallel ingestion — 2026-06-20
+
+**FR**
+- Ajouté — **abstention de prédicat** : un verbe sans équivalent dans l'ontologie est conservé tel quel (verbe brut) plutôt que forcé dans une case inadéquate. Évite les relations absurdes (forcer une mauvaise « case » produisait des faits incohérents) ; le fait entre **faible, mono-source**, et c'est le **tri en aval** qui en décide — pas un filtre amont. Tous les garde-fous amont sont conservés (pas de pronom orphelin, coréférence, polarité). Sous interrupteur (défaut inactif au commit ; activé juste après, voir version suivante).
+- Ajouté — **ingestion parallèle en lot** (`ecrire_lot`) pour les flux denses : l'extraction (le coût dominant) est parallélisée entre phrases, les écritures restent séquencées dans l'ordre. **Résultat identique** au séquentiel (prouvé par rejeu), seul le temps change. Sous interrupteur (défaut inactif).
+- Mesuré — **rappel préservé** sur un banc indépendant, **0 confidently-wrong**, extraction factuelle non régressée. Le résidu nommé (le modèle choisit parfois une mauvaise relation avec aplomb) reste une borne du modèle.
+
+**EN**
+- Added — **predicate abstention**: a verb with no equivalent in the ontology is kept as-is (raw verb) instead of being forced into an unsuitable slot. Avoids absurd relations (forcing a wrong "slot" produced incoherent facts); the fact enters **weak, single-source**, and **downstream sorting** decides — not an upstream filter. All upstream guardrails preserved (no orphan pronoun, coreference, polarity). Behind a switch (inactive at this commit; enabled right after, see next version).
+- Added — **batch parallel ingestion** (`ecrire_lot`) for dense streams: extraction (the dominant cost) is parallelized across sentences, writes stay ordered. **Identical result** to sequential (proven by replay), only timing changes. Behind a switch (inactive by default).
+- Measured — **recall preserved** on an independent benchmark, **0 confidently-wrong**, factual extraction not regressed. The named residue (the model sometimes confidently picks a wrong relation) remains a model limit.
+
+---
+
 ## [0.7.0] — Canonisation des prédicats, multi-triplets & ontologie événementielle / Predicate canonicalization, multi-triplets & event ontology — 2026-06-19
 
 **FR**

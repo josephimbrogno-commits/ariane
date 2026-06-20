@@ -15,7 +15,7 @@ from datetime import datetime
 
 from . import config
 from .coeur.graphe import GrapheMemoire, parse_date, norm_valeur, _famille
-from .coeur.ontologie import PREDICATS
+from .coeur.ontologie import PREDICATS, spec_predicat
 from .coeur import extraction, lecture
 
 
@@ -82,17 +82,119 @@ class Memoire:
         if not tris:
             return {"erreur": "extraction échouée", "enonce": enonce}
         quand = self._date(date)
-        rapports = [self._ecrire_un(tri, source_id, quand) for tri in tris]
+        # VITESSE C+B : si activé, mutualiser la brique 3 (appel mémoire) à l'échelle de la PHRASE —
+        # résoudre chaque référence distante DISTINCTE une seule fois (C), en parallèle (B) — AVANT les
+        # écritures. Les écritures restent séquencées dans l'ordre (déterminisme). OFF = chemin historique.
+        if config.OPT_APPEL_MEMOIRE and (config.OPT_GROUPER_MEMOIRE or config.OPT_PARALLELE_PHRASE):
+            self._resoudre_refs_phrase(tris)
+            rapports = [self._ecrire_un(tri, source_id, quand, deja_resolu=True) for tri in tris]
+        else:
+            rapports = [self._ecrire_un(tri, source_id, quand) for tri in tris]
         if len(rapports) == 1:
             return rapports[0]
         return {"action": " ; ".join(str(r.get("action") or r.get("erreur") or "") for r in rapports),
                 "n_faits": len(rapports), "faits": rapports}
 
-    def _ecrire_un(self, tri, source_id, quand):
-        """Ingère UN fait extrait : brique 3 (appel mémoire, qui-pas-quoi) → dérivation → exécution."""
+    def ecrire_lot(self, enonces):
+        """VITESSE B — ingère une SÉQUENCE en parallélisant l'EXTRACTION (le coût dominant, ~98 % du
+        temps mesuré) tout en gardant les ÉCRITURES séquencées DANS L'ORDRE. `enonces` = liste de
+        (enonce, source_id, date). Équivaut à N appels `ecrire(...)` consécutifs, en plus rapide.
+
+        Iso-résultat PAR CONSTRUCTION : l'extraction est PURE (LLM + texte + fenêtre de coréférence ; la
+        fenêtre est du texte BRUT connu d'avance, indépendante de la toile) → chaque phrase reçoit
+        EXACTEMENT le même (énoncé, contexte) qu'en séquentiel → mêmes triplets. Puis brique 3 +
+        dérivation + ingestion s'exécutent DANS L'ORDRE, sur la même toile qu'en séquentiel → même
+        résultat. Seul le TEMPS MUR change. OFF (séquentiel) reste disponible : appeler `ecrire` en boucle."""
+        items = list(enonces)
+        n = len(items)
+        if n == 0:
+            return []
+
+        # 1) CONTEXTES de coréférence, déterministes, calculés d'avance (logique identique à ecrire()).
+        contextes, fenetre = [], list(self._fenetre)
+        K = config.FENETRE_COREF_MAX_PHRASES
+        for enonce, _, _ in items:
+            ctx = "\n".join(fenetre[-K:]) if (config.OPT_FENETRE_COREF and fenetre) else None
+            contextes.append(ctx)
+            fenetre.append(enonce)
+            fenetre = fenetre[-(K + 1):]
+        self._fenetre = fenetre                          # état final, comme après n appels ecrire()
+
+        # 2) EXTRACTION (coût dominant) — en PARALLÈLE si demandé ; résultats ALIGNÉS sur l'ordre d'entrée.
+        def _extraire(i):
+            enonce, ctx = items[i][0], contextes[i]
+            if config.OPT_MULTI_TRIPLETS:
+                return extraction.extraire_liste(self.llm, enonce, contexte=ctx)
+            t = extraction.extraire(self.llm, enonce, contexte=ctx)
+            return [t] if t else []
+
+        if config.OPT_PARALLELE_PHRASE and n > 1:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=min(config.PARALLELE_MAX_WORKERS, n)) as ex:
+                tris_phrase = list(ex.map(_extraire, range(n)))   # map PRÉSERVE l'ordre
+        else:
+            tris_phrase = [_extraire(i) for i in range(n)]
+
+        # 3) ÉCRITURES séquencées DANS L'ORDRE — strictement comme la boucle de ecrire() (iso-résultat).
+        rapports = []
+        for i in range(n):
+            enonce, src, d = items[i]
+            tris = tris_phrase[i]
+            if not tris:
+                rapports.append({"erreur": "extraction échouée", "enonce": enonce})
+                continue
+            quand = self._date(d)
+            if config.OPT_APPEL_MEMOIRE and config.OPT_GROUPER_MEMOIRE:
+                self._resoudre_refs_phrase(tris)
+                rs = [self._ecrire_un(t, src, quand, deja_resolu=True) for t in tris]
+            else:
+                rs = [self._ecrire_un(t, src, quand) for t in tris]
+            rapports.append(rs[0] if len(rs) == 1 else
+                            {"action": " ; ".join(str(r.get("action") or r.get("erreur") or "") for r in rs),
+                             "n_faits": len(rs), "faits": rs})
+        return rapports
+
+    def _resoudre_refs_phrase(self, tris):
+        """VITESSE C(+B) — BRIQUE 3 MUTUALISÉE par phrase. Résout chaque référence distante DISTINCTE
+        (sujet, et objet si le prédicat porte une entité) UNE seule fois au lieu d'une fois par triplet,
+        optionnellement EN PARALLÈLE, puis applique le « QUI » résolu à tous les triplets concernés.
+        Lecture SEULE de la toile (aucune écriture ici → résolutions indépendantes, parallélisables) ;
+        les écritures se feront ensuite, séquencées, dans l'ordre. Iso-résultat : mêmes (ref,type) →
+        même résolution ; seul le NOMBRE d'appels et le TEMPS MUR changent, pas les sorties."""
+        jobs = {}                                  # (ref, type) -> nom canonique ou None ; dédoublonné
+        for tri in tris:
+            jobs[(tri["sujet"], tri.get("type_sujet"))] = None
+            if PREDICATS.get(tri["predicat"], {}).get("objet_entite"):
+                jobs[(tri["objet"], tri.get("type_objet"))] = None
+        cles = list(jobs)
+
+        def _resoudre(cle):
+            return cle, self._resoudre_memoire(cle[0], cle[1])
+
+        if config.OPT_PARALLELE_PHRASE and len(cles) > 1:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=min(config.PARALLELE_MAX_WORKERS, len(cles))) as ex:
+                for cle, cano in ex.map(_resoudre, cles):
+                    jobs[cle] = cano
+        else:
+            for cle in cles:                       # C seul (sans B) : un seul appel par réf distincte
+                jobs[cle] = self._resoudre_memoire(cle[0], cle[1])
+
+        for tri in tris:                           # appliquer le QUI résolu (None = référence inchangée)
+            cano = jobs.get((tri["sujet"], tri.get("type_sujet")))
+            if cano:
+                tri["sujet"] = cano
+            if PREDICATS.get(tri["predicat"], {}).get("objet_entite"):
+                cano_o = jobs.get((tri["objet"], tri.get("type_objet")))
+                if cano_o:
+                    tri["objet"] = cano_o
+
+    def _ecrire_un(self, tri, source_id, quand, deja_resolu=False):
+        """Ingère UN fait extrait : brique 3 (appel mémoire, qui-pas-quoi) → dérivation → exécution.
+        `deja_resolu` : la brique 3 a déjà été faite en lot par `_resoudre_refs_phrase` (vitesse C+B)."""
         # BRIQUE 3 — APPEL MÉMOIRE : rattacher une référence DISTANTE à une entité CONNUE, AVANT d'écrire.
         # La mémoire répond QUI ; le QUOI reste celui du TEXTE (le texte prime). Match unique seulement.
-        if config.OPT_APPEL_MEMOIRE:
+        if config.OPT_APPEL_MEMOIRE and not deja_resolu:
             cano = self._resoudre_memoire(tri["sujet"], tri.get("type_sujet"))
             if cano:
                 tri["sujet"] = cano
@@ -194,7 +296,7 @@ class Memoire:
 
         cible = next((f for f in courants
                       if norm_valeur(objet_de(f)) == norm_valeur(objet)), None)
-        if cible is None and PREDICATS[predicat]["fonctionnel"] and len(courants) == 1:
+        if cible is None and spec_predicat(predicat)["fonctionnel"] and len(courants) == 1:
             cible = courants[0]              # fonctionnel : une seule valeur courante → on la clôt
 
         if cible is not None:

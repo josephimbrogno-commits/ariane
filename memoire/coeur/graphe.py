@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from .. import config
-from .ontologie import PREDICATS, demivie_certitude, phrase as phrase_fait
+from .ontologie import PREDICATS, spec_predicat, demivie_certitude, phrase as phrase_fait
 
 _TITRES = {"m", "mme", "mlle", "dr", "pr", "le", "la", "les", "l",
            "entreprise", "ville", "societe", "monsieur", "madame"}
@@ -275,7 +275,7 @@ class GrapheMemoire:
     # ── PROCÉDURE D'ÉCRITURE ─────────────────────────────────────────────
     def ingerer(self, sujet, predicat, objet, source_id, date_obs, date_validite=None,
                 type_sujet=None, type_objet=None):
-        spec = PREDICATS[predicat]
+        spec = spec_predicat(predicat)                           # verbe brut inconnu → DEFAULT_SPEC sûr
         sujet_e, _ = self.resoudre(sujet, date_obs, type_sujet)   # le type du greffier voyage au nœud
         objet_id, objet_aff = None, objet
         if spec["objet_entite"]:
@@ -554,7 +554,7 @@ class GrapheMemoire:
         return self.entites[eid].nom if eid in self.entites else "?"
 
     def fait_court(self, f):
-        vol = PREDICATS[f.predicat]["volatilite"]
+        vol = spec_predicat(f.predicat)["volatilite"]
         de = f.valide_de.strftime("%Y-%m") if f.valide_de else "?"
         jus = f.valide_jusqua.strftime("%Y-%m") if f.valide_jusqua else "…"
         noy = " ★noyau" if f.noyau else ""

@@ -19,6 +19,7 @@ Règle d'or : en cas de doute sur un axe, RIEN plutôt que le fait risqué.
 import re
 import unicodedata
 
+from .. import config
 from .ontologie import PREDICATS, CANON_PREDICATS, vocabulaire_pour_extraction
 
 
@@ -216,6 +217,27 @@ SYS_EXTRACTION = (
 _MODALITES = ("accompli", "projete", "rapporte", "nie_rapporte")
 _TEMPORALITES = ("courant", "debut_seul", "fin_seule", "intervalle_ferme", "occurrence", "sans_date")
 
+# ── DROIT À L'ABSTENTION DE PRÉDICAT (option) : garder le VERBE BRUT plutôt que forcer une case ──
+# Diagnostic : forcer la phrase dans une des 107 cases produit des absurdités (a_pour_capitale(mosquée)).
+# La clause donne au greffier une SORTIE : si aucune case ne colle, garder le verbe du texte (préfixe ~).
+# Précision INVERSÉE : ~ est le DERNIER recours (sinon on fragmenterait des relations canonisables).
+# N'est ajoutée au prompt QUE si l'option est active → quand OFF, prompt et sorties INCHANGÉS (iso-résultat).
+_ABSTENTION_CLAUSE = (
+    "\n1ter) ABSTENTION DE PRÉDICAT (RÈGLE FORTE). Le prédicat que tu choisis DOIT vouloir dire la MÊME "
+    "chose que le verbe de la phrase. Si le verbe de la phrase n'a PAS d'équivalent exact dans la liste, "
+    "il est INTERDIT d'en détourner un au sens proche : tu DOIS alors écrire predicat = « ~ » suivi du "
+    "verbe de la phrase à l'infinitif.\n"
+    "   Exemples OBLIGATOIRES : « sont exfiltrés » → predicat=« ~exfiltrer » (PAS se_retire_de) ; "
+    "« sont rapatriés » → « ~rapatrier » ; « bat en retraite » → « ~battre_en_retraite ». "
+    "Au moindre doute « est-ce vraiment le même sens ? » → utilise « ~verbe ». Mieux vaut le verbe brut "
+    "fidèle qu'une case au sens différent."
+)
+
+
+def _sys(base):
+    """Prompt système, augmenté de la clause d'abstention SEULEMENT si l'option est active."""
+    return base + _ABSTENTION_CLAUSE if config.OPT_ABSTENTION_PREDICAT else base
+
 # ── AXE RÔLE/DIRECTION : la direction se DÉRIVE des TYPES, pas de la grammaire ────────────────
 # Un type d'entité (tel que nommé par le LLM) → l'ensemble des « cases » de signature qu'il peut remplir.
 # Un PAYS remplit lieu ET organisation (acteur) → tolérance pour les prédicats géo/politiques.
@@ -304,17 +326,33 @@ def _finaliser(brut, texte, contexte, llm):
     if _RE_CONTINUITE.search(_norm(texte)):     # « n'a jamais cessé de », « continue de » → courant
         temp, fin = "courant", None
 
-    if predicat not in PREDICATS or not sujet or not objet:   # 5e axe : couverture d'ontologie
+    # ABSTENTION DE PRÉDICAT (option) : un prédicat préfixé « ~ » = le greffier a renoncé à forcer une
+    # case et garde le VERBE BRUT du texte. Reconnu → gardé HORS-ontologie (ni canonisation ni axe rôle,
+    # faute de signature) MAIS soumis à TOUS les autres garde-fous (pronom, coréférence, polarité…).
+    brut_verbe = False
+    if config.OPT_ABSTENTION_PREDICAT and predicat.startswith("~"):
+        cand = _norm(predicat[1:]).strip()
+        if cand in PREDICATS:
+            predicat = cand                       # « ~ » apposé à un VRAI prédicat → traiter normalement
+        else:
+            predicat, brut_verbe = cand, True     # vrai verbe brut hors-ontologie → abstention
+
+    if brut_verbe:
+        if not predicat or not sujet or not objet:
+            return None
+    elif predicat not in PREDICATS or not sujet or not objet:   # 5e axe : couverture d'ontologie
         return None
 
-    # CANONISATION DES PRÉDICATS (chantier 1) : une forme synonyme (pdg_de, a_dirige) → le prédicat
-    # canonique (dirige), AVANT l'axe rôle — pour que les sources s'accumulent et les conflits
-    # s'enregistrent. La direction sera (r)établie juste après par _assigner_role via les signatures.
-    predicat = CANON_PREDICATS.get(predicat, predicat)
-
-    # AXE RÔLE/DIRECTION : oriente par les TYPES des entités (swap si la surface est inversée)
-    sujet, objet, t_s, t_o = _assigner_role(predicat, sujet, objet,
-                                            brut.get("type_e_sujet"), brut.get("type_e_objet"))
+    if brut_verbe:
+        t_s, t_o = brut.get("type_e_sujet"), brut.get("type_e_objet")   # pas de signature → ordre gardé
+    else:
+        # CANONISATION DES PRÉDICATS (chantier 1) : une forme synonyme (pdg_de, a_dirige) → le prédicat
+        # canonique (dirige), AVANT l'axe rôle — pour que les sources s'accumulent et les conflits
+        # s'enregistrent. La direction sera (r)établie juste après par _assigner_role via les signatures.
+        predicat = CANON_PREDICATS.get(predicat, predicat)
+        # AXE RÔLE/DIRECTION : oriente par les TYPES des entités (swap si la surface est inversée)
+        sujet, objet, t_s, t_o = _assigner_role(predicat, sujet, objet,
+                                                brut.get("type_e_sujet"), brut.get("type_e_objet"))
 
     # FENÊTRE DE CORÉFÉRENCE (brique 2) : un pronom-sujet/objet n'ancre aucun fait. AVANT d'abstenir,
     # on tente de le rattacher à un antécédent NOMMÉ proche (contexte glissant). Résolu → on écrit au
@@ -360,7 +398,7 @@ SYS_EXTRACTION_MULTI = SYS_EXTRACTION.split("Réponds UNIQUEMENT")[0] + (
 def extraire(llm, texte, contexte=None):
     """SINGLE (inchangé) : la grille d'UN fait. Conserve le comportement historique (barometre, bancs).
     `contexte` active la coréférence (brique 2) ; sans contexte → comportement brique 1."""
-    brut = llm.json(f"Énoncé : « {texte} »\n\nRemplis la grille en JSON strict.", systeme=SYS_EXTRACTION)
+    brut = llm.json(f"Énoncé : « {texte} »\n\nRemplis la grille en JSON strict.", systeme=_sys(SYS_EXTRACTION))
     return _finaliser(brut, texte, contexte, llm)
 
 
@@ -368,7 +406,7 @@ def extraire_liste(llm, texte, contexte=None):
     """MULTI-TRIPLETS : extrait TOUS les faits distincts d'une phrase (1..N). Chaque fait passe par la
     MÊME `_finaliser` que le single → mêmes garde-fous (0 FP, anti-pronom, coréférence). Dé-doublonné."""
     d = llm.json(f"Énoncé : « {texte} »\n\nExtrais TOUS les faits distincts, en JSON strict.",
-                 systeme=SYS_EXTRACTION_MULTI)
+                 systeme=_sys(SYS_EXTRACTION_MULTI))
     faits = d.get("faits") if isinstance(d, dict) else None
     if not isinstance(faits, list):
         return []

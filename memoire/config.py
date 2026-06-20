@@ -99,6 +99,24 @@ APPEL_MEMOIRE_MAX_CANDIDATS = 12  # nb max d'entités présentées au résolveur
 # chacun passant par la MÊME finalisation (planchers 0-FP, anti-pronom, coréférence) que le single.
 OPT_MULTI_TRIPLETS = True         # ecrire() extrait plusieurs faits par phrase. OFF = comportement single historique.
 
+# ── VITESSE (chantier C+B) : accélérer l'ingestion SANS rien changer aux sorties (iso-résultat) ──
+# Le multi-triplets refait la brique 3 (appel mémoire) PAR triplet : une phrase à N faits qui partagent
+# le même sujet (« le commandant ») résout N fois la MÊME référence. C = la résoudre UNE fois par phrase
+# (mutualiser, mêmes calculs, moins d'appels). B = exécuter les résolutions distantes INDÉPENDANTES en
+# parallèle (gain de temps mur). Les ÉCRITURES restent séquencées dans l'ordre (déterminisme préservé).
+# Iso-résultat à prouver par record/replay : OFF = comportement historique exact (rollback immédiat).
+OPT_GROUPER_MEMOIRE = False       # C : résoudre chaque réf distante UNE fois par phrase (au lieu d'1×/triplet)
+OPT_PARALLELE_PHRASE = False      # B : paralléliser les résolutions distantes distinctes d'une phrase
+PARALLELE_MAX_WORKERS = 6         # plafond de threads pour B (Ollama sert les requêtes concurrentes)
+
+# ── DROIT À L'ABSTENTION DE PRÉDICAT : garder le VERBE BRUT plutôt que forcer une case absurde ──
+# Diagnostic mis-picks : forcer la phrase dans l'une des 107 cases produit des absurdités de cause (c)
+# (a_pour_capitale(mosquée), se_retire_de pour une exfiltration…). Sonde : garder le verbe brut du texte
+# (hors-ontologie) quand AUCUNE case ne colle réduit ces absurdités SANS forcer. Un fait à verbe brut est
+# faible par nature (objet littéral, non-fonctionnel, mono-source) → le tri AVAL de la mémoire l'encaisse.
+# OFF = comportement historique EXACT (prompt et sorties inchangés ; un prédicat hors-liste → abstention totale).
+OPT_ABSTENTION_PREDICAT = False   # autoriser un prédicat = verbe brut (~verbe) en DERNIER recours. OFF = historique.
+
 # ── Importance (option) — PageRank pondéré + croisement entité × relation ──
 IMP_DAMPING = 0.85
 IMP_ALPHA = 0.7

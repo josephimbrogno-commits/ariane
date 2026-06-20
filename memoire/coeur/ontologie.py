@@ -317,8 +317,24 @@ def groupe(predicat, sujet):
     return GABARITS.get(predicat, ("", "", "{s}"))[2].format(s=sujet)
 
 
+# ── ABSTENTION DE PRÉDICAT : un VERBE BRUT (hors-ontologie) gardé faute de case adéquate ─────────
+# Quand le greffier renonce à forcer une case (droit à l'abstention), le fait porte un prédicat
+# HORS de PREDICATS (le verbe du texte). Tous les consommateurs de signature passent par
+# `spec_predicat`, qui retourne ce DEFAULT pour l'inconnu. Choix SÛRS : objet_entite=False (l'objet
+# reste un littéral, aucune résolution/fusion d'entité depuis une relation brute → pas de pollution) ;
+# fonctionnel=False (un verbe brut ne clôt JAMAIS un fait canonique) ; volatilite=stable (demi-vie
+# normale). Un fait brut est donc faible par nature (mono-source, non corroboré) — le tri AVAL s'en charge.
+DEFAULT_SPEC = {"fonctionnel": False, "volatilite": "stable", "objet_entite": False,
+                "type_sujet": None, "type_objet": None, "desc": "verbe brut (hors-ontologie)"}
+
+
+def spec_predicat(predicat):
+    """Signature d'un prédicat — celle de l'ontologie, ou DEFAULT_SPEC pour un VERBE BRUT inconnu."""
+    return PREDICATS.get(predicat, DEFAULT_SPEC)
+
+
 def demivie_certitude(predicat):
-    return DEMIVIE_CERTITUDE[PREDICATS[predicat]["volatilite"]]
+    return DEMIVIE_CERTITUDE[spec_predicat(predicat)["volatilite"]]
 
 
 def poids_importance(predicat):
