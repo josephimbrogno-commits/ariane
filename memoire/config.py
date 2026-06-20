@@ -115,7 +115,7 @@ PARALLELE_MAX_WORKERS = 6         # plafond de threads pour B (Ollama sert les r
 # (hors-ontologie) quand AUCUNE case ne colle réduit ces absurdités SANS forcer. Un fait à verbe brut est
 # faible par nature (objet littéral, non-fonctionnel, mono-source) → le tri AVAL de la mémoire l'encaisse.
 # OFF = comportement historique EXACT (prompt et sorties inchangés ; un prédicat hors-liste → abstention totale).
-OPT_ABSTENTION_PREDICAT = False   # autoriser un prédicat = verbe brut (~verbe) en DERNIER recours. OFF = historique.
+OPT_ABSTENTION_PREDICAT = True    # autoriser un prédicat = verbe brut (~verbe) en DERNIER recours. Validé banc caché.
 
 # ── Importance (option) — PageRank pondéré + croisement entité × relation ──
 IMP_DAMPING = 0.85
