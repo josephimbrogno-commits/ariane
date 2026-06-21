@@ -238,6 +238,17 @@ def _sys(base):
     """Prompt système, augmenté de la clause d'abstention SEULEMENT si l'option est active."""
     return base + _ABSTENTION_CLAUSE if config.OPT_ABSTENTION_PREDICAT else base
 
+
+# ── REROUTAGE DATE ÉVÉNEMENTIEL : prédicat-agent + objet ANNÉE → le prédicat de DATE adéquat ──────
+_REROUTE_DATE = {"a_fonde": "date_fondation_de", "a_publie": "date_sortie_de",
+                 "a_cree": "date_sortie_de", "a_lance": "date_sortie_de"}
+_RE_DATE_OBJ = re.compile(r"^\s*(en\s+|vers\s+)?\d{4}(-\d{2}){0,2}\s*$", re.IGNORECASE)
+
+
+def _est_date_obj(o):
+    """True si l'objet est une PURE date (année AAAA, ou AAAA-MM(-JJ)) — pas une entité."""
+    return bool(_RE_DATE_OBJ.match(str(o)))
+
 # ── AXE RÔLE/DIRECTION : la direction se DÉRIVE des TYPES, pas de la grammaire ────────────────
 # Un type d'entité (tel que nommé par le LLM) → l'ensemble des « cases » de signature qu'il peut remplir.
 # Un PAYS remplit lieu ET organisation (acteur) → tolérance pour les prédicats géo/politiques.
@@ -350,6 +361,11 @@ def _finaliser(brut, texte, contexte, llm):
         # canonique (dirige), AVANT l'axe rôle — pour que les sources s'accumulent et les conflits
         # s'enregistrent. La direction sera (r)établie juste après par _assigner_role via les signatures.
         predicat = CANON_PREDICATS.get(predicat, predicat)
+        # REROUTAGE DATE ÉVÉNEMENTIEL : un prédicat-AGENT (a_fonde/a_publie/a_cree/a_lance, qui attend
+        # une personne/entité en objet) avec un objet = pure DATE est TOUJOURS faux (« créé en 1944 » →
+        # a_fonde(org→1944)). On reroute vers la date_*_de adéquate → la date atterrit au bon prédicat.
+        if config.OPT_REROUTE_DATE and predicat in _REROUTE_DATE and _est_date_obj(objet):
+            predicat = _REROUTE_DATE[predicat]
         # AXE RÔLE/DIRECTION : oriente par les TYPES des entités (swap si la surface est inversée)
         sujet, objet, t_s, t_o = _assigner_role(predicat, sujet, objet,
                                                 brut.get("type_e_sujet"), brut.get("type_e_objet"))
@@ -395,6 +411,24 @@ SYS_EXTRACTION_MULTI = SYS_EXTRACTION.split("Réponds UNIQUEMENT")[0] + (
 )
 
 
+# ── COMPLÉTUDE (option) : forcer le multi-triplets à ne lâcher AUCUN fait d'une phrase dense ─────
+_COMPLETUDE_CLAUSE = (
+    "\nEXHAUSTIVITÉ — ne lâche AUCUN fait. Une phrase biographique condensée porte PLUSIEURS faits : "
+    "sors-les TOUS, séparément. Pour une PERSONNE, passe systématiquement en revue et extrais CHACUN "
+    "s'il est présent : date de naissance · LIEU de naissance · profession · nationalité · date/lieu de "
+    "décès. Dans une apposition « né le DATE à LIEU » il y a DEUX faits — ne lâche JAMAIS le LIEU quand "
+    "la date est donnée. Pour une ORGANISATION/ŒUVRE : date de fondation/sortie, siège, fondateur. "
+    "Exemple : « Colin Gaston, né le 22 avril 1973 à Toulouse, est un joueur français de rugby » → "
+    "QUATRE faits : date_naissance_de=1973 · lieu_naissance_de=Toulouse · profession_de=joueur de rugby "
+    "· a_nationalite=français."
+)
+
+
+def _multi_sys():
+    """Prompt multi, augmenté de la clause de complétude SEULEMENT si l'option est active."""
+    return SYS_EXTRACTION_MULTI + _COMPLETUDE_CLAUSE if config.OPT_EXTRACTION_COMPLETE else SYS_EXTRACTION_MULTI
+
+
 def extraire(llm, texte, contexte=None):
     """SINGLE (inchangé) : la grille d'UN fait. Conserve le comportement historique (barometre, bancs).
     `contexte` active la coréférence (brique 2) ; sans contexte → comportement brique 1."""
@@ -406,7 +440,7 @@ def extraire_liste(llm, texte, contexte=None):
     """MULTI-TRIPLETS : extrait TOUS les faits distincts d'une phrase (1..N). Chaque fait passe par la
     MÊME `_finaliser` que le single → mêmes garde-fous (0 FP, anti-pronom, coréférence). Dé-doublonné."""
     d = llm.json(f"Énoncé : « {texte} »\n\nExtrais TOUS les faits distincts, en JSON strict.",
-                 systeme=_sys(SYS_EXTRACTION_MULTI))
+                 systeme=_sys(_multi_sys()))
     faits = d.get("faits") if isinstance(d, dict) else None
     if not isinstance(faits, list):
         return []

@@ -67,21 +67,34 @@ def entree_vectorielle(g, question, k=None):
         if use_imp:
             s += config.IMP_W_IMPORTANCE * f.importance
         e = g.entites.get(f.sujet_id)
-        if e:
-            etok = set(norm_nom(e.nom).split())
-            if etok and etok <= qtok:
-                s += config.V2_BONUS_ENTITE
+        if e and _est_nommee(e.nom, qtok):
+            s += config.V2_BONUS_ENTITE
         scored.append((f, s))
     scored.sort(key=lambda x: -x[1])
     return [f for f, _ in scored[:k]], v
+
+
+def _est_nommee(nom, qtok):
+    """L'entité `nom` est-elle DÉSIGNÉE par la question (tokens qtok) ?
+    STRICT (historique) : tous les tokens de l'entité ⊆ question.
+    SOUPLE (option) : les tokens PREMIER et DERNIER (latin, ≥3 car) de l'entité ∈ question — tolère les
+    tokens du milieu (prénoms composés, titres, scripts non-latins), exige les DEUX bouts (anti-homonyme)."""
+    toks = norm_nom(nom).split()
+    if not toks:
+        return False
+    if set(toks) <= qtok:
+        return True
+    if not config.OPT_RECONNAISSANCE_SOUPLE:
+        return False
+    lat = [t for t in toks if len(t) >= 3 and all("a" <= c <= "z" for c in t)]
+    return bool(lat) and lat[0] in qtok and lat[-1] in qtok
 
 
 def reconnaissance(g, question):
     """Reconnaissance directe : si la question NOMME une entité, on lit TOUS ses faits, dormants
     compris. La dormance ne bloque que l'évocation libre, jamais la reconnaissance."""
     qtok = set(norm_nom(question).split())
-    nommees = [e.id for e in g.entites.values()
-               if set(norm_nom(e.nom).split()) and set(norm_nom(e.nom).split()) <= qtok]
+    nommees = [e.id for e in g.entites.values() if _est_nommee(e.nom, qtok)]
     return [f for f in g.faits.values() if f.sujet_id in nommees or f.objet_id in nommees]
 
 

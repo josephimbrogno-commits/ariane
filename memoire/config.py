@@ -93,6 +93,33 @@ FENETRE_COREF_MAX_PHRASES = 3     # limite DURE d'élargissement en arrière (au
 OPT_APPEL_MEMOIRE = True          # rattacher une référence distante à une entité connue (qui, pas quoi). ON.
 APPEL_MEMOIRE_MAX_CANDIDATS = 12  # nb max d'entités présentées au résolveur LLM (borne le coût + le prompt)
 
+# ── RECONNAISSANCE SOUPLE (chantier LECTURE) : retrouver le nœud malgré des tokens EN PLUS ────────
+# Diagnostic long run : 36 % des abstentions = le fait EST stocké mais l'entité n'est pas reconnue, car
+# le nom stocké a des tokens que la question (titre) n'a pas (« Pierre HENRI Canivet », « … VICOMTE de
+# Biolley », « Kimura (木村) »). Le match strict (tokens entité ⊆ question) échoue. Souple : on reconnaît
+# si les tokens PREMIER et DERNIER (latin, ≥3 car) de l'entité sont dans la question — on tolère les
+# tokens du milieu (prénoms composés, titres, scripts non-latins) MAIS on exige les deux bouts → rejette
+# les homonymes (« Alfonso … de Mendoza » n'accroche pas « JUAN … y Mendoza » : 1er token « juan » absent).
+# Recall-sûr et conflit-sûr (n'injecte que des faits ; le disputé reste rendu disputé). OFF = strict historique.
+OPT_RECONNAISSANCE_SOUPLE = True   # ON : +6 pts rappel (34→40 %) recall-sûr & 0-CW conflit tenu (mesuré). Local, non committé.
+
+# ── EXTRACTION COMPLÈTE (chantier EXTRACTION) : ne pas lâcher de fait sur phrase dense ────────────
+# Diagnostic long run : 53 % des faits « manquants » = l'entité a déjà plusieurs faits mais UNE relation
+# de la phrase dense a été sautée (« né le X à Y » → garde la date, lâche le LIEU). Le multi-triplets
+# n'est pas exhaustif. ON : clause de COMPLÉTUDE biographique au prompt multi (revue systématique des
+# slots naissance/lieu/profession/nationalité/décès + exemple). N'ajoute QUE des faits fidèles (recall),
+# chaque fait passe par les mêmes planchers 0-FP polarité. Multi seulement (single/barometre inchangés).
+# OFF = prompt multi historique → iso-résultat.
+OPT_EXTRACTION_COMPLETE = True    # ON : +5 pts recall extraction (50→55 %) recall-sûr, FP polarité tenu. Local, non committé.
+
+# ── REROUTAGE DATE ÉVÉNEMENTIEL (chantier EXTRACTION org/œuvre) : la date au BON prédicat ─────────
+# Diagnostic : le trou noir org/œuvre = la DATE routée au MAUVAIS prédicat. « CCM créé en 1944 » →
+# a_fonde(CCM→1944), « roman publié en 2005 » → a_publie(roman→2005). Or a_fonde/a_publie/a_cree/a_lance
+# attendent une PERSONNE/ENTITÉ en objet, JAMAIS une année → un objet ANNÉE y est TOUJOURS faux. On
+# reroute alors vers date_fondation_de / date_sortie_de. Recall ET précision sûrs (le fait mal routé est
+# soit perdu soit faux). Ne touche que ces prédicats-agents quand l'objet est une pure date. OFF = historique.
+OPT_REROUTE_DATE = True            # ON : date au bon prédicat (date_fondation 0→3/15), précision-sûr. Local→commit.
+
 # ── EXTRACTION MULTI-TRIPLETS (chantier AJOUTER) : N faits par phrase au lieu d'UN ────────────
 # Une phrase dense (« né en 1973 à Toulouse, joueur de rugby ») porte plusieurs faits ; en extraire
 # UN seul plafonne le rappel (mesuré : banc caché Wikidata 20 %). On extrait TOUS les faits distincts,

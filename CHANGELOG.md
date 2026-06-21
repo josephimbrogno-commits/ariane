@@ -21,6 +21,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.9.0] — Rappel : lecture & extraction / Recall: reading & extraction — 2026-06-21
+
+**FR**
+- Ajouté — **reconnaissance souple** : une entité nommée est retrouvée même quand son libellé stocké porte des éléments supplémentaires (prénoms composés, parenthèses, scripts non-latins), en exigeant le premier et le dernier élément du nom (anti-homonyme). Améliore le rappel à la lecture, sans toucher au tri ni introduire d'affirmation erronée.
+- Ajouté — **complétude d'extraction sur phrase dense** : revue systématique des informations d'une phrase riche pour ne pas en perdre (« né le X à Y » conserve la date ET le lieu). N'ajoute que des faits fidèles.
+- Ajouté — **reroutage de date** : une date attribuée par erreur à un prédicat d'action (fonder, publier, créer) est réorientée vers le prédicat de date adéquat. Correction structurelle, sûre en précision.
+- Mesuré — rappel amélioré sur banc indépendant ; **0 confidently-wrong préservé sur les contradictions** (l'atout épistémique du système) ; non-régression factuelle. Restent ouverts : dates d'œuvres parfois non extraites, nationalité (gentilé vs pays).
+
+**EN**
+- Added — **lenient entity recognition**: a named entity is matched even when its stored label carries extra tokens (compound first names, parentheses, non-Latin scripts), by requiring the first and last name token (anti-homonym). Improves reading recall, without touching sorting or introducing wrong assertions.
+- Added — **dense-sentence extraction completeness**: systematic review of a rich sentence so no fact is dropped ("born on X in Y" keeps both date AND place). Only faithful facts added.
+- Added — **date rerouting**: a date wrongly attached to an action predicate (found, publish, create) is rerouted to the proper date predicate. Structural, precision-safe fix.
+- Measured — improved recall on an independent benchmark; **0 confidently-wrong preserved on contradictions** (the system's epistemic edge); no factual regression. Still open: work release dates sometimes unextracted, nationality (demonym vs country).
+
+---
+
 ## [0.8.0] — Abstention de prédicat & ingestion parallèle / Predicate abstention & parallel ingestion — 2026-06-20
 
 **FR**
