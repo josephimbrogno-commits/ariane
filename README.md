@@ -25,6 +25,18 @@ Language models have frozen knowledge: they serve a stale fact with the same con
 
 ---
 
+## Positionnement / Positioning
+
+🇫🇷
+- **Ce qu'elle fait, seule.** Une mémoire pour agents qui **trie** : sur un monde qui change, elle sert le fait **actuel** et jamais le périmé, et **signale un conflit** au lieu de trancher à plat. Démontré en conditions réelles dans un agent (slot `contextEngine` d'OpenClaw), face au RAG natif qui, lui, ressert le périmé et tranche.
+- **Ce qu'elle ne fait pas.** Elle ne rivalise pas avec un RAG sur le **rappel brut** (retrouver le plus de faits possible) — et ne le cherche pas. Un bon RAG retrouve plus ; Ariane *juge mieux* ce qu'elle a.
+- **Donc : un complément, pas un concurrent.** Ariane = la couche de **tri / garde-fou épistémique** (slot `contextEngine`, poussée d'office à chaque tour). Le RAG = la **récupération large** (slot `memory`). Les deux **coexistent** dans OpenClaw.
+
+🇬🇧
+- **What it does, on its own.** A memory for agents that **sorts**: in a changing world it serves the **current** fact and never the stale one, and **flags a conflict** instead of resolving it flatly. Demonstrated in real conditions inside an agent (OpenClaw's `contextEngine` slot), against the native RAG that re-serves the stale fact and picks one.
+- **What it doesn't do.** It doesn't compete with a RAG on **raw recall** (retrieving as many facts as possible) — and doesn't try to. A good RAG retrieves more; Ariane *judges better* what it holds.
+- **So: a complement, not a competitor.** Ariane = the **sorting / epistemic-guardrail** layer (`contextEngine` slot, pushed on every turn). The RAG = the **broad retrieval** (`memory` slot). The two **coexist** in OpenClaw.
+
 ## Ce qui distingue Ariane / What sets Ariane apart
 
 - **Grammaire épistémique / Epistemic grammar** — présent / imparfait (« était… jusqu'à ») / conditionnel (« serait… à revérifier ») / « je ne sais pas ». Present / past / conditional / "I don't know."
@@ -47,6 +59,13 @@ Sur des faits réels datés et vérifiables (composition du CAC 40, chancelier d
 **Sur la justesse brute, un bon RAG fait jeu égal avec Ariane (93 % chacun). Ariane ne gagne pas là : elle ne se trompe jamais avec aplomb (0 sur 14, comme le RAG propre) et tient quand les notes sont sales (le RAG naïf s'effondre à 40 % et sert le périmé avec assurance). Le contraste éclate surtout sur l'obscur vérifiable — les sorties du CAC 2025 qu'aucun modèle ne connaît — pas sur les faits récents notoires.**
 **On raw accuracy a good RAG ties Ariane (93% each). Ariane doesn't win there: it is never confidently wrong (0 of 14, like clean RAG) and holds when notes are messy (naive RAG collapses to 40% and serves stale facts with confidence). The contrast is sharpest on the verifiable obscure — the 2025 CAC exits no model knows — not on well-known recent facts.**
 
+> **🇫🇷 Portée exacte du « 0 confidently-wrong ».** La garantie vaut sur les faits qu'Ariane a **captés et structurés** : sur ce périmètre, elle ne sert jamais un fait périmé ni ne tranche un conflit à plat — c'est **garanti par construction** (le tri se fait à l'écriture, pas à la lecture). Un fait qu'elle a **manqué** échappe en revanche à ce garde-fou : l'agent retombe alors sur ses propres biais ou le web. Le 0-CW est donc une garantie sur le **périmètre acquis**, pas une immunité globale — et **étendre ce périmètre (l'extraction) est le chantier ouvert n°1**.
+>
+> **🇬🇧 Exact scope of "0 confidently-wrong."** The guarantee holds on the facts Ariane **captured and structured**: on that perimeter it never serves a stale fact nor resolves a conflict flatly — **guaranteed by construction** (sorting happens at write time, not read time). A fact it **missed** escapes the guardrail: the agent then falls back on its own biases or the web. So 0-CW is a guarantee on the **acquired perimeter**, not a blanket immunity — and **extending that perimeter (extraction) is open worksite #1**.
+
+> **🇫🇷 Banc public à venir.** Les chiffres ci-dessus viennent de bancs internes. Un **banc reproductible** (faits Wikidata publics, juge mécanique) est le prochain livrable, pour que ces résultats soient **vérifiables par un tiers**.
+> **🇬🇧 Public benchmark coming.** The figures above come from internal benchmarks. A **reproducible benchmark** (public Wikidata facts, mechanical judge) is the next deliverable, so these results become **third-party verifiable**.
+
 ## Structure du dépôt / Repository layout
 
 ```
@@ -57,6 +76,12 @@ ARTICLE_FR.md   l'article complet (français)
 ARTICLE_EN.md   the full article (English)
 CHANGELOG.md    journal des évolutions / changelog
 ```
+
+## Essayer Ariane / Try it
+
+🇫🇷 Un chemin guidé pour **installer**, **voir le tri** sur la bibliothèque seule (deux faits datés contradictoires → Ariane sert l'actuel ; un conflit → « disputé »), puis la **brancher sur un agent OpenClaw** et **savoir quoi observer** : **[GETTING_STARTED.md](./GETTING_STARTED.md)**. Détails du raccordement OpenClaw : [connecteur/README_CONNECTEUR.md](./connecteur/README_CONNECTEUR.md).
+
+🇬🇧 A guided path to **install**, **see the sorting** on the library alone (two contradictory dated facts → Ariane serves the current one; a conflict → "disputed"), then **wire it into an OpenClaw agent** and **know what to watch for**: **[GETTING_STARTED.md](./GETTING_STARTED.md)**. OpenClaw wiring details: [connecteur/README_CONNECTEUR.md](./connecteur/README_CONNECTEUR.md).
 
 ## Journal des évolutions / Changelog
 

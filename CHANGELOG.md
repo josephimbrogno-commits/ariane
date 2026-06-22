@@ -21,6 +21,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.11.0] — Documentation : positionnement, portée du 0-CW, guide testeurs / Documentation: positioning, 0-CW scope, testers' guide — 2026-06-22
+
+**FR**
+- Clarifié — **positionnement honnête** : Ariane est un **complément** d'un RAG, pas un concurrent. Sa valeur propre est le **tri / garde-fou épistémique** (slot `contextEngine`, poussé d'office) ; le RAG reste la **récupération large** (slot `memory`), et les deux coexistent. Elle ne rivalise pas sur le **rappel brut** et ne le cherche pas. Tri **démontré en conditions réelles** dans un agent OpenClaw (sert l'actuel, signale le conflit là où le RAG natif ressert le périmé et tranche à plat).
+- Précisé — **portée du « 0 confidently-wrong »** : garantie sur le **périmètre acquis** (les faits captés et structurés), **pas** une immunité globale ; un fait manqué par l'extraction échappe au garde-fou. Étendre la couverture (l'extraction) reste le **chantier ouvert n°1**. Nuance ajoutée au README et aux articles FR/EN.
+- Ajouté — **guide testeurs** (`GETTING_STARTED.md`) : prérequis (matériel réaliste annoncé), exemple minimal qui **montre le tri** sur la bibliothèque seule (péremption + conflit), raccordement OpenClaw, **quoi observer**, sécurité du raccord (loopback, aucun secret en clair, store local).
+- Annoncé — **banc public reproductible** (faits Wikidata publics, juge mécanique) comme prochain livrable, pour des chiffres **vérifiables par un tiers**. Aucun chiffre de banc privé publié en attendant.
+- Documentation seule — **aucun changement de code**.
+
+**EN**
+- Clarified — **honest positioning**: Ariane is a **complement** to a RAG, not a competitor. Its own value is **sorting / epistemic guardrail** (`contextEngine` slot, pushed by default); the RAG remains **broad retrieval** (`memory` slot), and the two coexist. It doesn't compete on **raw recall** and doesn't try to. Sorting **demonstrated in real conditions** inside an OpenClaw agent (serves the current fact, flags the conflict where the native RAG re-serves the stale and picks one flatly).
+- Specified — **scope of "0 confidently-wrong"**: a guarantee on the **acquired perimeter** (facts captured and structured), **not** a blanket immunity; a fact missed by extraction escapes the guardrail. Extending coverage (extraction) remains **open worksite #1**. Nuance added to the README and the FR/EN articles.
+- Added — **testers' guide** (`GETTING_STARTED.md`): prerequisites (realistic hardware stated), a minimal example that **shows the sorting** on the library alone (perishability + conflict), OpenClaw wiring, **what to watch for**, wiring safety (loopback, no secrets in clear, local store).
+- Announced — **reproducible public benchmark** (public Wikidata facts, mechanical judge) as the next deliverable, for **third-party verifiable** figures. No private benchmark figure published in the meantime.
+- Documentation only — **no code change**.
+
+---
+
 ## [0.10.0] — Subconscient : volatilité apprise (mécanisme, inactif par défaut) / Learned volatility (mechanism, off by default) — 2026-06-22
 
 **FR**

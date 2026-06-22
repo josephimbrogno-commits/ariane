@@ -109,3 +109,13 @@ connecteur/test_reel/_banc_cache/proc_texte_long.py
 connecteur/test_reel/_banc_cache/proc_bataille.py
 connecteur/test_reel/_banc_cache/proc_justice.py
 connecteur/test_reel/COMPTE_RENDU_CAGE_A_EVENEMENTIEL.md
+
+connecteur/test_reel/_vitesse/
+connecteur/test_reel/_precision/
+connecteur/test_reel/_longrun/
+
+# diagnostics & corpus d'ontologie internes (livrables de mission, non publiés)
+connecteur/test_reel/diagnostic/
+connecteur/test_reel/ontologie/
+connecteur/test_reel/barometre_extraction.py
+connecteur/test_reel/resultats_e12.json

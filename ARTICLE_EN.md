@@ -73,6 +73,10 @@ The real value, then, isn't being *smarter* than RAG. It's making correction **s
 
 A RAG sorts *if* you fed it well. A structured memory sorts *because* the architecture enforces it. In production, where data arrives messy, that is the whole difference.
 
+One bound to name right away, because it conditions the previous one: these guarantees hold on the facts Ariane **captured and structured**. On that perimeter it does not serve the stale, nor resolve a conflict flatly — by construction. But a fact it **missed** (one its extraction failed to read) escapes the guardrail: the agent then falls back on its own biases or the web. So "zero confidently-wrong" is a guarantee on the **acquired perimeter**, not a blanket immunity — and that is precisely why extending that perimeter (extraction) is open worksite #1.
+
+*Since this benchmark, the sorting has also been exercised live inside an OpenClaw agent, on two terrains where it alone matters: a changing fact (the agent serves the current one, never the stale) and an unresolved conflict (the agent surfaces the dispute) — where the native RAG, by contrast, re-serves the stale fact and picks one flatly. A qualitative demonstration of the mechanism in real conditions, not a new figure.*
+
 ---
 
 ## The limits, measured

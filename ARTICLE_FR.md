@@ -73,6 +73,10 @@ La vraie valeur n'est donc pas d'être *plus maligne* que le RAG. C'est de rendr
 
 Un RAG trie *si* on l'a bien nourri. Une mémoire structurée trie *parce que* l'architecture l'impose. En production, où les données arrivent sales, c'est toute la différence.
 
+Une borne à nommer tout de suite, car elle conditionne la précédente : ces garanties valent sur les faits qu'Ariane a **captés et structurés**. Sur ce périmètre, elle ne sert pas le périmé et ne tranche pas un conflit à plat — par construction. Mais un fait qu'elle a **manqué** (que son extraction n'a pas su lire) échappe au garde-fou : l'agent retombe alors sur ses propres biais ou le web. Le « zéro confidently-wrong » est donc une garantie sur le **périmètre acquis**, pas une immunité globale — et c'est précisément pourquoi étendre ce périmètre (l'extraction) est le chantier ouvert n°1.
+
+*Depuis ce banc, le tri a aussi été éprouvé en direct dans un agent OpenClaw, sur deux terrains où il est seul à compter : un fait qui change (l'agent sert l'actuel, jamais le périmé) et un conflit non tranché (l'agent restitue le litige) — là où le RAG natif, lui, ressert le périmé et tranche à plat. Démonstration qualitative du mécanisme en conditions réelles, pas un nouveau chiffre.*
+
 ---
 
 ## Les limites, mesurées
