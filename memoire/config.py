@@ -120,6 +120,28 @@ OPT_EXTRACTION_COMPLETE = True    # ON : +5 pts recall extraction (50→55 %) re
 # soit perdu soit faux). Ne touche que ces prédicats-agents quand l'objet est une pure date. OFF = historique.
 OPT_REROUTE_DATE = True            # ON : date au bon prédicat (date_fondation 0→3/15), précision-sûr. Local→commit.
 
+# ── SUBCONSCIENT #1 : VOLATILITÉ APPRISE (premier motif distillé au-dessus des faits) ─────────────
+# Ariane apprend la volatilité d'un prédicat de ses CLÔTURES DATÉES observées (clos / occurrences ;
+# JAMAIS les disputés = signal pur) → alimente la demi-vie de certitude EN REMPLACEMENT PROGRESSIF du
+# prior à la main. Mélange pondéré par l'ÉVIDENCE : peu d'obs → on reste sur le prior (« supposition ») ;
+# beaucoup d'obs cohérentes → on glisse vers l'observé (« appris »). Le prior n'est jamais jeté (point de
+# départ corrigé). AUCUN fait modifié — seulement un PARAMÈTRE dérivé (la demi-vie). Calculé à la
+# consolidation, inspectable (g.dump_volatilite()). OFF = demi-vie = étiquette main exacte (iso-résultat).
+# ⚠️ Ne doit JAMAIS dégrader la péremption (statut courant/clos fixé à l'écriture, indépendant de la demi-vie).
+# ⚠️ POURQUOI DÉFAUT OFF (pas seulement « une option ») : la mesure clos/occ CONFOND « longue histoire » et
+# « haute volatilité » — elle n'est PAS normalisée par le TEMPS. Sur des historiques profonds (24 coachs d'un
+# club → 85 % de clôtures) elle sur-estime la volatilité (demi-vie apprise 41j alors que le prior 180j est plus
+# juste : un coach dure ~2 ans). Le mécanisme est SAIN et SÛR (péremption strictement préservée, ON==OFF),
+# mais NE PAS L'ACTIVER tant que la volatilité observée n'est pas mesurée en CHANGEMENTS PAR UNITÉ DE TEMPS.
+OPT_SUBCONSCIENT_VOLATILITE = False
+SUBCON_K_CONF = 30.0              # lissage de confiance : w = n_occ / (n_occ + K) (30 obs → confiance 0.5)
+SUBCON_MIN_OCC = 12              # sous ce nb d'occurrences → reste sur le prior (« supposition »), pas de bascule
+SUBCON_MIN_CLOS = 3              # et au moins ce nb de clôtures pour oser un signal de volatilité
+SUBCON_DV_REF = 730.0           # demi-vie de référence (jours) pour taux=0 ; calibrée sur les labels main
+SUBCON_DV_DEMI_TAUX = 0.10      # taux qui HALVE la demi-vie (taux 0.20 → ~180j = « changeant », concorde)
+SUBCON_DV_PLANCHER = 20.0       # demi-vie minimale apprise (jours)
+SUBCON_DV_IMMUABLE = 1.0e6      # représentation finie de « immuable » (None) pour le mélange
+
 # ── EXTRACTION MULTI-TRIPLETS (chantier AJOUTER) : N faits par phrase au lieu d'UN ────────────
 # Une phrase dense (« né en 1973 à Toulouse, joueur de rugby ») porte plusieurs faits ; en extraire
 # UN seul plafonne le rappel (mesuré : banc caché Wikidata 20 %). On extrait TOUS les faits distincts,

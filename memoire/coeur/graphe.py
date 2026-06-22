@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from .. import config
-from .ontologie import PREDICATS, spec_predicat, demivie_certitude, phrase as phrase_fait
+from .ontologie import PREDICATS, spec_predicat, demivie_certitude, DEMIVIE_CERTITUDE, phrase as phrase_fait
 
 _TITRES = {"m", "mme", "mlle", "dr", "pr", "le", "la", "les", "l",
            "entreprise", "ville", "societe", "monsieur", "madame"}
@@ -188,6 +188,7 @@ class GrapheMemoire:
         self.journal_resolution = []
         self.journal_type_conflit = []      # SOCLE TYPE : un type différent arrive sur un nœud déjà typé
         self.journal_reunion = []           # RÉUNION : fragments réunis (garde/absorbe/score/voisins) — auditable
+        self.volatilite_apprise = {}        # SUBCONSCIENT : par prédicat, ce qu'on a appris (cf. apprendre_volatilite)
 
     # ── RÉSOLUTION D'ENTITÉS ─────────────────────────────────────────────
     def _poser_type(self, e, type_attendu):
@@ -360,7 +361,7 @@ class GrapheMemoire:
             dj = (date - f.dernier_acces).total_seconds() / 86400.0
             if dj > 0:
                 f.force *= 0.5 ** (dj / (config.V2_FORCE_DEMIVIE * fac))
-            dv = demivie_certitude(f.predicat)
+            dv = self._demivie(f.predicat)
             if dv is not None:
                 dc = (date - f.derniere_confirmation).total_seconds() / 86400.0
                 if dc > 0:
@@ -535,8 +536,61 @@ class GrapheMemoire:
             del self.entites[pid]
         return self.journal_reunion[-len(absorbes):] if absorbes else []
 
+    # ── SUBCONSCIENT #1 : VOLATILITÉ APPRISE (motif distillé au-dessus des faits, sans les toucher) ──
+    def apprendre_volatilite(self):
+        """Apprend par prédicat la volatilité OBSERVÉE (taux de clôture datée = clos / occurrences ;
+        disputés EXCLUS = signal pur) et la MÉLANGE au prior à la main, pondéré par l'évidence (nb d'obs).
+        Ne modifie AUCUN fait — remplit self.volatilite_apprise. Sous le seuil de matière → confiance 0,
+        on reste sur le prior (« supposition ») : on ne confond jamais « 0 observation » avec « stable »."""
+        occ = {}
+        for f in self.faits.values():
+            if f.statut == "disputé":
+                continue                                # signal PUR : seulement les faits réglés (clos/courant)
+            a = occ.setdefault(f.predicat, [0, 0])
+            a[0] += 1
+            a[1] += (f.statut == "clos")
+        appris = {}
+        for p, (n_occ, n_clos) in occ.items():
+            prior = spec_predicat(p).get("volatilite", "stable")
+            prior_dv = DEMIVIE_CERTITUDE.get(prior)
+            prior_dv_f = config.SUBCON_DV_IMMUABLE if prior_dv is None else prior_dv
+            taux = n_clos / n_occ if n_occ else 0.0
+            obs_dv = max(config.SUBCON_DV_PLANCHER,
+                         config.SUBCON_DV_REF * (0.5 ** (taux / config.SUBCON_DV_DEMI_TAUX)))
+            w = 0.0 if (n_occ < config.SUBCON_MIN_OCC or n_clos < config.SUBCON_MIN_CLOS) \
+                else n_occ / (n_occ + config.SUBCON_K_CONF)
+            melange = (1 - w) * prior_dv_f + w * obs_dv
+            dv = None if melange >= config.SUBCON_DV_IMMUABLE * 0.5 else melange
+            etiq = "appris" if w >= 0.6 else ("mixte" if w >= 0.15 else "supposition")
+            appris[p] = {"prior": prior, "prior_dv": prior_dv, "n_occ": n_occ, "n_clos": n_clos,
+                         "taux": round(taux, 3), "confiance": round(w, 2), "obs_dv": round(obs_dv, 1),
+                         "dv": (round(dv, 1) if dv is not None else None), "etiquette": etiq}
+        self.volatilite_apprise = appris
+        return appris
+
+    def _demivie(self, predicat):
+        """Demi-vie de certitude EFFECTIVE : apprise (subconscient) si active ET assez de matière, sinon
+        le prior à la main exact (→ iso-résultat quand l'option est OFF)."""
+        if config.OPT_SUBCONSCIENT_VOLATILITE:
+            a = self.volatilite_apprise.get(predicat)
+            if a and a["confiance"] > 0:
+                return a["dv"]
+        return demivie_certitude(predicat)
+
+    def dump_volatilite(self):
+        """Vue LISIBLE de ce que le subconscient a appris — inspectable et contestable, jamais une boîte noire."""
+        out = []
+        for p, a in sorted(self.volatilite_apprise.items(), key=lambda x: -x[1]["n_clos"]):
+            dvm = "immuable" if a["prior_dv"] is None else f"{a['prior_dv']:.0f}j"
+            dve = "immuable" if a["dv"] is None else f"{a['dv']:.0f}j"
+            out.append(f"{p:18} prior={a['prior']:>9}({dvm:>8}) taux={a['taux']:>5.0%} n_obs={a['n_occ']:>3} "
+                       f"clos={a['n_clos']:>3} conf={a['confiance']:.2f} → demi-vie={dve:>8} [{a['etiquette']}]")
+        return "\n".join(out)
+
     def consolider(self, date, avant_dormance=None):
         """Décroissances → promotion → fusion → [réunion fragments] → plancher → [hook] → dormance."""
+        if config.OPT_SUBCONSCIENT_VOLATILITE:        # le subconscient distille AVANT la décroissance
+            self.apprendre_volatilite()
         self._decroitre(date)
         promus = self.promouvoir()
         fusions = self.fusionner_entites()

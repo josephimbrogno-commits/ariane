@@ -21,6 +21,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.10.0] — Subconscient : volatilité apprise (mécanisme, inactif par défaut) / Learned volatility (mechanism, off by default) — 2026-06-22
+
+**FR**
+- Ajouté — **volatilité apprise** (premier étage d'une couche « subconsciente ») : la mémoire peut estimer la vitesse de péremption d'un type de fait à partir de ses propres clôtures datées observées, au lieu d'une étiquette fixée à la main. L'estimation PART du réglage à la main et le corrige à mesure que les observations s'accumulent, en restant sur le réglage à la main tant que les observations sont trop rares (« supposition » vs « appris »). N'ajuste qu'un paramètre dérivé (la vitesse de décroissance de certitude) — **aucun fait n'est modifié**. Inspectable.
+- **Inactif par défaut** — raison assumée : la mesure actuelle (part des faits clos) confond une « longue histoire » avec une « forte volatilité » et n'est pas normalisée par le temps ; sur des historiques profonds elle sur-estime la volatilité. Le mécanisme est en place et sûr (la péremption — servir l'actuel, jamais le périmé — est strictement inchangée), mais l'activation attend une mesure en **changements par unité de temps**.
+- Mesuré — péremption strictement préservée (mécanisme actif ou non) ; non-régression complète.
+
+**EN**
+- Added — **learned volatility** (first stage of a "subconscious" layer): memory can estimate how fast a fact type goes stale from its own observed dated closures, instead of a hand-set label. The estimate STARTS from the hand setting and corrects it as observations accumulate, staying on the hand setting while observations are too sparse ("assumption" vs "learned"). Adjusts only a derived parameter (certainty decay speed) — **no fact is modified**. Inspectable.
+- **Off by default** — acknowledged reason: the current measure (share of closed facts) conflates "long history" with "high volatility" and is not time-normalized; on deep histories it overestimates volatility. The mechanism is in place and safe (perishability — serve the current, never the stale — is strictly unchanged), but activation awaits a measure in **changes per unit of time**.
+- Measured — perishability strictly preserved (mechanism on or off); full non-regression.
+
+---
+
 ## [0.9.0] — Rappel : lecture & extraction / Recall: reading & extraction — 2026-06-21
 
 **FR**
