@@ -166,6 +166,18 @@ PARALLELE_MAX_WORKERS = 6         # plafond de threads pour B (Ollama sert les r
 # OFF = comportement historique EXACT (prompt et sorties inchangés ; un prédicat hors-liste → abstention totale).
 OPT_ABSTENTION_PREDICAT = True    # autoriser un prédicat = verbe brut (~verbe) en DERNIER recours. Validé banc caché.
 
+# ── CANONICALISATION DES VERBES BRUTS (Temps A) : rabattre un verbe brut INFINITIF sur sa case ────
+# Quand le greffier abstient vers un verbe brut (ex. « diriger ») alors qu'une case CANONIQUE existe
+# (« dirige »), on rabat dessus AVANT de figer l'abstention (table SÛRE CANON_VERBES_BRUTS). Gain :
+# recall (faits perdus à l'infinitif récupérés) + ASSURANCE CARDINALE — un modèle qui abstiendrait
+# « diriger » ne casserait plus la péremption (un verbe brut ne clôt JAMAIS ; rabattu sur « dirige »
+# fonctionnel, il clôt). Cf. crash MoE qwen3.6 (abstenait dirige→diriger → CW péremption 25-30 %).
+# Carte 2026-06-24 : sur qwen3:30b-a3b l'abstention est rare → gain recall marginal, c'est surtout une
+# assurance. Validé ON : recall iso (51 %→51 %), cardinal IDENTIQUE (péremption 98 %/0 % CW, conflit
+# 12/12·0), déterministe 13/7/17 + test dédié 13/13. ON par défaut = antidote cardinal actif (rabattage
+# d'un verbe brut sur sa case avant abstention). OFF = le verbe brut reste hors-ontologie (iso historique).
+OPT_CANON_VERBES_BRUTS = True
+
 # ── Importance (option) — PageRank pondéré + croisement entité × relation ──
 IMP_DAMPING = 0.85
 IMP_ALPHA = 0.7

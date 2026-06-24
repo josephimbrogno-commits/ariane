@@ -158,6 +158,19 @@ CANON_PREDICATS = {
     "a_dirige": "dirige",    # personne→organisation : même relation, direction rétablie par l'axe rôle
 }
 
+# ── CANONICALISATION DES VERBES BRUTS (Temps A) : verbe brut INFINITIF → prédicat canonique ───────
+# Distinct de CANON_PREDICATS : ici la clé est un VERBE BRUT abstenu (∉ PREDICATS), rabattu sur sa case
+# SOUS interrupteur (config.OPT_CANON_VERBES_BRUTS) dans la branche d'abstention de l'extraction. Table
+# SÛRE : uniquement des correspondances CERTAINES de MÊME relation (le brut est l'infinitif du prédicat).
+# Carte des prédicats manquants (2026-06-24) : sur qwen3:30b-a3b l'abstention est rare (3 % des faits,
+# 91 % hapax) → gain recall marginal, mais ASSURANCE cardinale (cf. crash MoE qwen3.6 : abstenait
+# « dirige »→« diriger », un verbe brut ne clôt jamais → CW péremption). Dans le doute → NE PAS ajouter
+# (un rabattage faux réintroduit du bruit ; le verbe brut reste le filet d'honnêteté).
+CANON_VERBES_BRUTS = {
+    "diriger": "dirige",            # org→personne, même relation que « dirige » (CARDINAL : doit clôturer)
+    "interpreter": "a_interprete",  # personne→œuvre, même relation que « a_interprete »
+}
+
 POIDS_IMPORTANCE = {
     # socle
     "nom_de": 1.0, "parent_de": 0.95, "enfant_de": 0.95, "frere_de": 0.9, "marie_a": 0.9,

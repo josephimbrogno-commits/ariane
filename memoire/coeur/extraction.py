@@ -20,7 +20,7 @@ import re
 import unicodedata
 
 from .. import config
-from .ontologie import PREDICATS, CANON_PREDICATS, vocabulaire_pour_extraction
+from .ontologie import PREDICATS, CANON_PREDICATS, CANON_VERBES_BRUTS, vocabulaire_pour_extraction
 
 
 def _norm(texte):
@@ -343,8 +343,11 @@ def _finaliser(brut, texte, contexte, llm):
     brut_verbe = False
     if config.OPT_ABSTENTION_PREDICAT and predicat.startswith("~"):
         cand = _norm(predicat[1:]).strip()
+        cano = CANON_VERBES_BRUTS.get(cand) if config.OPT_CANON_VERBES_BRUTS else None
         if cand in PREDICATS:
             predicat = cand                       # « ~ » apposé à un VRAI prédicat → traiter normalement
+        elif cano:
+            predicat = cano                       # Temps A : verbe brut rabattu sur sa case canonique
         else:
             predicat, brut_verbe = cand, True     # vrai verbe brut hors-ontologie → abstention
 
