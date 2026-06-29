@@ -7,11 +7,20 @@ dates ; aucun verdict de lecture ne clôt un fait). ON NE SUPPRIME JAMAIS : remp
 faible → DORMANT (toujours navigable). L'embedding est INJECTÉ (bibliothèque agnostique du modèle).
 """
 
+import os
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 
 from .. import config
+
+# ── INDEX PAR ENTITÉ (CHANTIER 2A) ────────────────────────────────────────────
+# Interrupteur par variable d'env UNIQUEMENT (pas de config.py — évite toute collision).
+#   NOYAU_INDEX=1  → lectures de voisinage via index O(voisinage).
+#   défaut (absent/≠"1") → chemin historique : scan linéaire O(toile), byte-pour-byte iso-résultat.
+# Lu UNE fois au chargement du module. L'index est TOUJOURS maintenu à l'écriture (coût négligeable,
+# invisible) ; seul le CHEMIN DE LECTURE est commuté, pour garantir que ON ne diverge jamais de OFF.
+_USE_INDEX = os.environ.get("NOYAU_INDEX") == "1"
 from .ontologie import PREDICATS, spec_predicat, demivie_certitude, DEMIVIE_CERTITUDE, phrase as phrase_fait
 
 _TITRES = {"m", "mme", "mlle", "dr", "pr", "le", "la", "les", "l",
@@ -183,6 +192,12 @@ class GrapheMemoire:
         self.embed = embed                  # INJECTÉ : texte -> vecteur normalisé
         self.entites = {}
         self.faits = {}
+        # ── INDEX PAR ENTITÉ (2A) : maintenus à CHAQUE écriture (insertion + réassignation de fusion).
+        # Aucun fait n'est JAMAIS retiré de self.faits (« on ne supprime jamais » : clos/dormant restent),
+        # donc il n'existe aucun point de suppression à intercepter. Invariant : _idx_n == len(self.faits).
+        self._idx_sujet = {}                # sujet_id -> set(fait_id)
+        self._idx_objet = {}                # objet_id -> set(fait_id)   (objet_id None → non indexé)
+        self._idx_n = 0                     # nb de faits indexés par sujet (auto-contrôle de cohérence)
         self._eid = 0
         self._fid = 0
         self.journal_resolution = []
@@ -263,15 +278,99 @@ class GrapheMemoire:
         )
         self._plafond_menteur(f)
         self.faits[f.id] = f
+        self._idx_ajouter(f)
         return f
+
+    # ── MAINTENANCE DE L'INDEX PAR ENTITÉ (2A) ───────────────────────────
+    def _idx_ajouter(self, f):
+        """Indexe un fait neuf. Appelé à CHAQUE insertion (toujours, flag indifférent)."""
+        self._idx_sujet.setdefault(f.sujet_id, set()).add(f.id)
+        if f.objet_id is not None:
+            self._idx_objet.setdefault(f.objet_id, set()).add(f.id)
+        self._idx_n += 1
+
+    def _idx_deplacer_sujet(self, f, ancien, nouveau):
+        s = self._idx_sujet.get(ancien)
+        if s is not None:
+            s.discard(f.id)
+            if not s:
+                del self._idx_sujet[ancien]
+        self._idx_sujet.setdefault(nouveau, set()).add(f.id)
+
+    def _idx_deplacer_objet(self, f, ancien, nouveau):
+        if ancien is not None:
+            s = self._idx_objet.get(ancien)
+            if s is not None:
+                s.discard(f.id)
+                if not s:
+                    del self._idx_objet[ancien]
+        if nouveau is not None:
+            self._idx_objet.setdefault(nouveau, set()).add(f.id)
+
+    def reconstruire_index(self):
+        """(Re)construit l'index depuis self.faits — pour un graphe CHARGÉ (faits insérés hors _creer_fait)."""
+        self._idx_sujet, self._idx_objet, self._idx_n = {}, {}, 0
+        for f in self.faits.values():
+            self._idx_ajouter(f)
+
+    def _idx_assurer(self):
+        """Auto-guérison O(1) : reconstruit l'index si nécessaire, sinon no-op. Couvre deux cas de
+        graphe CHARGÉ (réserve persistante = pickle, cf. connecteur/service.py) :
+          • pickle ANTÉRIEUR à 2A → les attributs d'index manquent (unpickle n'appelle pas __init__) ;
+          • faits insérés hors _creer_fait → invariant _idx_n == len(self.faits) rompu."""
+        if not hasattr(self, "_idx_n"):
+            self.reconstruire_index()
+        elif self._idx_n != len(self.faits):
+            self.reconstruire_index()
+
+    def _reassigner_entite(self, ancien_id, nouveau_id):
+        """Repointe TOUS les faits touchant `ancien_id` (en sujet ET/OU objet) vers `nouveau_id`.
+        OFF : transformation historique, scan linéaire (byte-pour-byte le code d'origine de fusion/réunion).
+        ON  : ne parcourt que le voisinage via l'index, et tient l'index à jour."""
+        if _USE_INDEX:
+            self._idx_assurer()
+            for fid in list(self._idx_sujet.get(ancien_id, ())):
+                f = self.faits[fid]
+                f.sujet_id = nouveau_id
+                self._idx_deplacer_sujet(f, ancien_id, nouveau_id)
+            for fid in list(self._idx_objet.get(ancien_id, ())):
+                f = self.faits[fid]
+                f.objet_id = nouveau_id
+                self._idx_deplacer_objet(f, ancien_id, nouveau_id)
+        else:
+            for f in self.faits.values():
+                if f.sujet_id == ancien_id:
+                    f.sujet_id = nouveau_id
+                if f.objet_id == ancien_id:
+                    f.objet_id = nouveau_id
 
     def _plafond_menteur(self, f):
         if f.n_sources() < 2:
             f.certitude = min(f.certitude, config.V2_CERT_PLAFOND_MENTEUR)
 
     def faits_de(self, sujet_id, predicat):
+        if _USE_INDEX:
+            self._idx_assurer()
+            ids = self._idx_sujet.get(sujet_id)
+            if not ids:
+                return []
+            faits = self.faits
+            # sorted(ids) ⇒ ordre des fid croissants = ordre d'insertion = itération dict du chemin OFF.
+            # Garantit l'iso-résultat NON SEULEMENT en ensemble mais en ORDRE (memes[0], max(...) inchangés).
+            return [faits[i] for i in sorted(ids) if faits[i].predicat == predicat]
         return [f for f in self.faits.values()
                 if f.sujet_id == sujet_id and f.predicat == predicat]
+
+    def faits_voisins(self, eid):
+        """VOISINAGE COMPLET d'une entité : tous les faits où `eid` est sujet OU objet (les deux sens).
+        Primitive de lecture de toile (même balayage que api.parcourir.liens_de, hors périmètre 2A).
+        OFF : scan O(toile). ON : union des index O(degré). Ordre fid croissant pour iso-résultat."""
+        if _USE_INDEX:
+            self._idx_assurer()
+            ids = self._idx_sujet.get(eid, set()) | self._idx_objet.get(eid, set())
+            return [self.faits[i] for i in sorted(ids)]
+        return [f for f in self.faits.values()
+                if f.sujet_id == eid or f.objet_id == eid]
 
     # ── PROCÉDURE D'ÉCRITURE ─────────────────────────────────────────────
     def ingerer(self, sujet, predicat, objet, source_id, date_obs, date_validite=None,
@@ -457,11 +556,7 @@ class GrapheMemoire:
                 e1, e2 = self.entites[ids[i]], self.entites[ids[j]]
                 if (float(e1.embedding @ e2.embedding) > config.V2_FUSION_SEUIL
                         and types_compatibles(e1.type, e2.type)):
-                    for f in self.faits.values():
-                        if f.sujet_id == e2.id:
-                            f.sujet_id = e1.id
-                        if f.objet_id == e2.id:
-                            f.objet_id = e1.id
+                    self._reassigner_entite(e2.id, e1.id)
                     if e2.nom not in e1.alias:
                         e1.alias.append(e2.nom)
                     supprimees.add(e2.id)
@@ -519,11 +614,7 @@ class GrapheMemoire:
                 score = sum(1.0 / df[nk] for nk in communs)             # rareté : voisin banal pèse peu
                 score += config.REUNION_EMBED_BONUS * max(0.0, float(e1.embedding @ e2.embedding))
                 if score >= config.REUNION_SEUIL and self._barre_confirmee(fam, communs, df, score):
-                    for f in self.faits.values():
-                        if f.sujet_id == e2.id:
-                            f.sujet_id = e1.id
-                        if f.objet_id == e2.id:
-                            f.objet_id = e1.id
+                    self._reassigner_entite(e2.id, e1.id)
                     for nom in [e2.nom] + e2.alias:
                         if nom not in e1.alias and norm_nom(nom) != norm_nom(e1.nom):
                             e1.alias.append(nom)       # trace d'origine (réversibilité minimale)

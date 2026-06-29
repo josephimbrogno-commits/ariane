@@ -119,3 +119,6 @@ connecteur/test_reel/diagnostic/
 connecteur/test_reel/ontologie/
 connecteur/test_reel/barometre_extraction.py
 connecteur/test_reel/resultats_e12.json
+
+# Mission NOYAU — sondes & corpus privés (jetables, non versionnés)
+noyau/

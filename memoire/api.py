@@ -16,7 +16,7 @@ from datetime import datetime
 from . import config
 from .coeur.graphe import GrapheMemoire, parse_date, norm_valeur, _famille
 from .coeur.ontologie import PREDICATS, spec_predicat
-from .coeur import extraction, lecture
+from .coeur import extraction, lecture, promotion
 
 
 # ── BRIQUE 3 — APPEL MÉMOIRE : ressources de détection d'une référence DISTANTE à résoudre ────
@@ -51,6 +51,25 @@ class Memoire:
 
     def _date(self, date):
         return parse_date(date) or self.horloge or datetime.now()
+
+    def _promouvoir_apres(self, res, quand):
+        """HOOK 2C — PROMOTION RÉTROACTIVE, gardé par NOYAU_PROMOTION (défaut OFF → no-op immédiat,
+        iso-résultat byte-pour-byte). Après l'insertion d'un fait NEUF, déclenche la re-fouille
+        ciblée bornée autour de son entité ; la promotion ne crée AUCUN fait neuf (elle réveille des
+        dormants existants) → pas de récursion via ce hook. Une promotion ne casse jamais une écriture."""
+        if not promotion.ACTIF or not isinstance(res, dict):
+            return res
+        sujet, touches = res.get("sujet"), res.get("touches")
+        if sujet is None or not touches:
+            return res
+        try:
+            promus = promotion.examiner(self.g, touches[-1], sujet.id, quand)
+        except Exception:
+            promus = []
+        if promus:
+            res = dict(res)
+            res["promus_retro"] = promus
+        return res
 
     def _hook_consolidation(self):
         try:                       # branché par le paquet d'options (étape 3) ; absent → cœur nu
@@ -212,9 +231,11 @@ class Memoire:
             return self._clore_par_extraction(tri, source_id, quand)
         if act == "FAIT_CLOS":
             return self._fait_clos(tri, source_id, quand, intention.get("debut"), intention.get("fin"))
-        return self.g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
-                              date_obs=quand, date_validite=intention.get("debut"),
-                              type_sujet=tri.get("type_sujet"), type_objet=tri.get("type_objet"))
+        return self._promouvoir_apres(
+            self.g.ingerer(tri["sujet"], tri["predicat"], tri["objet"], source_id=source_id,
+                           date_obs=quand, date_validite=intention.get("debut"),
+                           type_sujet=tri.get("type_sujet"), type_objet=tri.get("type_objet")),
+            quand)
 
     def _resoudre_memoire(self, ref, type_ref):
         """BRIQUE 3 — APPEL MÉMOIRE. Rattacher une référence DISTANTE à une entité CONNUE de la toile.
@@ -315,9 +336,12 @@ class Memoire:
                        type_sujet=None, type_objet=None):
         """Ingère un triplet déjà structuré (sans LLM). Utile aux tests et au geste `lier`.
         type_sujet/type_objet optionnels (le socle type) : passés tels quels au nœud si fournis."""
-        return self.g.ingerer(sujet, predicat, objet, source_id=source_id,
-                              date_obs=self._date(date), date_validite=validite,
-                              type_sujet=type_sujet, type_objet=type_objet)
+        quand = self._date(date)
+        return self._promouvoir_apres(
+            self.g.ingerer(sujet, predicat, objet, source_id=source_id,
+                           date_obs=quand, date_validite=validite,
+                           type_sujet=type_sujet, type_objet=type_objet),
+            quand)
 
     def lire(self, question, date=None):
         """Entrée vectorielle (+ reconnaissance par nœud nommé) + marche de graphe ; rendu verbal."""

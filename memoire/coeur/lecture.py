@@ -6,9 +6,18 @@ memoire/coeur/lecture.py — PROCÉDURE DE LECTURE : entrée vectorielle (+ reco
 `g.embed` et `llm` sont injectés. La reconnaissance/rappel est activée par config.OPT_RECONNAISSANCE.
 """
 
+import os
+
 from .. import config
 from .ontologie import phrase, groupe
 from .graphe import norm_nom
+
+# ── INTERRUPTEUR GRAMMAIRE DE COMPOSITION (chantier NOYAU 2B) — lu UNE fois, défaut OFF ───────────
+# OFF (défaut) : pipeline historique strictement inchangé (iso-résultat, tous les tests verts).
+# ON : après la marche de graphe, on COMPOSE les chaînes 2-sauts licites (table blanche + gate de
+# type au pivot, cf. grammaire.py) et on injecte des faits INFÉRÉS, toujours marqués « inféré »
+# (jamais présentés comme observés), héritant du statut épistémique le plus faible de leurs maillons.
+NOYAU_GRAMMAIRE = os.environ.get("NOYAU_GRAMMAIRE", "").strip().lower() in ("1", "true", "on", "oui")
 
 SYS_REPONSE = (
     "Les entités (personnes, entreprises, villes) sont FICTIVES et proviennent d'une base de "
@@ -189,6 +198,16 @@ def lire(g, llm, question, date_lecture, k=None):
 
     reveils = [f.id for f in injectes if g.acceder(f, date_lecture)]
     bloc = rendu_epistemique(g, injectes)
+
+    # ── HOOK GARDÉ GRAMMAIRE (2B) : OFF ⇒ tout ce bloc est sauté (iso-résultat historique) ────────
+    inferes = []
+    if NOYAU_GRAMMAIRE:
+        from .grammaire import composer, rendu_infere
+        inferes = composer(g, injectes)
+        bloc_inf = rendu_infere(inferes, actifs_seulement=True)
+        if bloc_inf:
+            bloc = bloc + "\n" + bloc_inf if bloc else bloc_inf
+
     prompt = f"Souvenirs :\n{bloc}\n\nQuestion : {question}\nRéponse :"
     reponse = llm.texte(prompt, systeme=SYS_REPONSE, temperature=0.0)
 
@@ -196,5 +215,8 @@ def lire(g, llm, question, date_lecture, k=None):
         if f.id in detecter_usage(llm, question, reponse, injectes):
             f.force = min(config.V2_FORCE_PLAFOND, f.force + config.V2_FORCE_GAIN_ACCES)
 
-    return {"reponse": reponse, "injectes": injectes, "chemin": chemin,
-            "reveils": reveils, "bloc": bloc}
+    resultat = {"reponse": reponse, "injectes": injectes, "chemin": chemin,
+                "reveils": reveils, "bloc": bloc}
+    if NOYAU_GRAMMAIRE:
+        resultat["inferes"] = inferes
+    return resultat

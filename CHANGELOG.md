@@ -21,6 +21,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.12.0] — Noyau : inférence & promotion (mécanismes, inactifs par défaut) / Core: inference & promotion (off by default) — 2026-06-29
+
+**FR**
+- Ajouté — **index par entité** : accès direct aux faits d'une entité (au lieu d'un parcours complet). Accélère fortement les opérations centrées entité. Sous interrupteur, inerte par défaut.
+- Ajouté — **inférence typée** (première brique du « raisonnement ») : la mémoire peut composer des faits reliés pour en déduire un nouveau, MAIS uniquement selon une grammaire de compositions légitimes par type, et le fait déduit est TOUJOURS marqué « inféré » (jamais affirmé comme observé). Sur banc de composition : aucune inférence fausse, rappel complet.
+- Ajouté — **promotion rétroactive** : un fait dormant (non encore jugé pertinent) peut être promu vers la mémoire active quand un fait nouveau lui donne du sens ; il rentre marqué « promu » et passe les mêmes garde-fous qu'un fait neuf.
+- Inactif par défaut — mécanismes en place et sûrs ; la garantie épistémique (servir l'actuel, signaler le conflit, ne rien affirmer d'inféré comme observé) est préservée. Activation au cas par cas.
+- Mesuré — non-régression complète ; garantie de tri inchangée, interrupteurs ON ou OFF.
+
+**EN**
+- Added — **per-entity index**: direct access to an entity's facts (instead of a full scan). Greatly speeds up entity-centered operations. Switch-gated, inert by default.
+- Added — **typed inference** (first "reasoning" brick): memory can compose linked facts to derive a new one, BUT only along a grammar of type-legitimate compositions, and the derived fact is ALWAYS marked "inferred" (never asserted as observed). On a composition benchmark: zero false inference, full recall.
+- Added — **retroactive promotion**: a dormant fact (not yet deemed relevant) can be promoted to active memory when a new fact gives it meaning; it enters marked "promoted" and passes the same guardrails as a fresh fact.
+- Off by default — mechanisms in place and safe; the epistemic guarantee (serve the current, flag conflicts, never assert inferred as observed) is preserved. Case-by-case activation.
+- Measured — full non-regression; sorting guarantee unchanged whether switches are on or off.
+
+---
+
 ## [0.11.0] — Documentation : positionnement, portée du 0-CW, guide testeurs / Documentation: positioning, 0-CW scope, testers' guide — 2026-06-22
 
 **FR**
