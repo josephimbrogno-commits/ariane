@@ -106,8 +106,11 @@ class FaitInfere:
         return gab[temps].format(s=self.sujet, o=self.objet)
 
     def rendu(self):
-        """Ligne de contexte EXPLICITEMENT marquée inférée (jamais confondable avec un souvenir)."""
-        return f"• [INFÉRÉ — {self.qualif}, composé de #{self.sources[0]}+#{self.sources[1]}] {self.phrase()}."
+        """Ligne de contexte EXPLICITEMENT marquée inférée (jamais confondable avec un souvenir).
+        Le HEDGE est BAKÉ DANS LA PHRASE (« il semblerait que… ») : un agent qui recopie la ligne
+        relaie la déduction sans dépendre d'une méta-instruction qu'un petit modèle peut ignorer."""
+        return (f"• [INFÉRÉ — DÉDUCTION, jamais un fait observé · en reliant "
+                f"#{self.sources[0]} et #{self.sources[1]}] il semblerait que {self.phrase().lower()}.")
 
 
 def _role(f, eid):

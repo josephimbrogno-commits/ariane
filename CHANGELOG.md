@@ -21,6 +21,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com). Indicative versio
 
 ---
 
+## [0.13.0] — Noyau : restitution de l'inféré et du promu / Core: surfacing inferred and promoted — 2026-06-30
+
+**FR**
+- Ajouté — **restitution qualifiée de l'inféré et du promu** : un fait déduit par composition est présenté avec une formulation prudente (« il semblerait, en reliant… ») et étiqueté comme déduction ; un fait promu (devenu pertinent après coup) est étiqueté « promu » plutôt que présenté comme un fait courant. La mémoire ne se contente plus de déduire ou de repêcher — elle DIT le statut de ce qu'elle produit. Sous interrupteur, inerte par défaut.
+- Note — la fidélité avec laquelle un agent relaie cette formulation prudente dépend de l'agent lui-même ; la mémoire fournit toujours l'étiquette, l'agent la restitue selon ses capacités.
+
+**EN**
+- Added — **qualified surfacing of inferred and promoted facts**: a fact derived by composition is presented with cautious phrasing ("it would appear, by linking…") and labelled as a deduction; a promoted fact (made relevant after the fact) is labelled "promoted" rather than presented as current. The memory no longer just derives or retrieves — it STATES the status of what it produces. Switch-gated, inert by default.
+- Note — how faithfully an agent relays this cautious phrasing depends on the agent itself; the memory always supplies the label, the agent restitutes it per its capabilities.
+
+---
+
 ## [0.12.0] — Noyau : inférence & promotion (mécanismes, inactifs par défaut) / Core: inference & promotion (off by default) — 2026-06-29
 
 **FR**

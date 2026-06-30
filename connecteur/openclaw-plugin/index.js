@@ -26,7 +26,12 @@ const ENTETE =
   "revérifier » pour [ACTUEL — incertain] (donne quand même la valeur) ; imparfait borné « était… " +
   "jusqu'à » pour [CLOS]. Pour [DISPUTÉ] : la mémoire n'a PAS tranché — tu DOIS citer LES DEUX " +
   "valeurs avec leurs sources et dire que c'est non tranché ; n'en choisis JAMAIS une seule et " +
-  "n'invente aucun label. N'invente aucun chiffre de confiance.\n\n";
+  "n'invente aucun label. N'invente aucun chiffre de confiance.\n" +
+  "Pour [INFÉRÉ — composé de …] : ce fait n'est PAS observé, il est DÉDUIT en reliant deux faits. " +
+  "Présente-le TOUJOURS EXPLICITEMENT comme une déduction (« en reliant ces faits, il semblerait que… ») " +
+  "et JAMAIS comme un fait établi ou observé. Si la réponse repose sur un [INFÉRÉ], dis-le. " +
+  "Pour [PROMU — dormant redevenu pertinent] : c'est un fait en réserve réactivé par le contexte ; " +
+  "tu peux t'en servir, mais signale qu'il a été repêché (« un élément en réserve refait surface… »).\n\n";
 
 // ── helpers messages ─────────────────────────────────────────────────────────
 function texteDe(m) {

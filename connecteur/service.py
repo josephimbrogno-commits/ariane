@@ -165,10 +165,29 @@ def _bloc(question, date_lecture):
         if f.id not in vus:
             vus.add(f.id)
             injectes.append(f)
-    injectes = _focaliser(g, injectes, question)   # anti-flood (connecteur)
+    # ── INFÉRENCE 2B (chantier RACCORD) — LE LABEL AVANT LE PUSH ───────────────────────────────────
+    # On compose sur le pool COMPLET (AVANT _focaliser) : la chaîne (ex. Velora→Damien) n'est pas nommée
+    # dans la question, donc _focaliser l'écarterait et la composition échouerait. On résout le « focus
+    # jette la chaîne » SANS affaiblir l'anti-flood (qui ne protège que les faits OBSERVÉS poussés).
+    # La discipline 2B (table blanche + gate de type) garantit 0 faux chemin ; chaque fait composé porte
+    # TOUJOURS son label « inféré » + provenance (FaitInfere.rendu) — jamais servi comme observé.
+    inferes = []
+    if lecture.NOYAU_GRAMMAIRE:
+        from memoire.coeur.grammaire import composer
+        inferes = composer(g, injectes)
+    injectes = _focaliser(g, injectes, question)   # anti-flood (connecteur) sur les faits OBSERVÉS
     for f in injectes:                     # la consultation renforce la Force (réveil éventuel)
         g.acceder(f, date_lecture)
     bloc = lecture.rendu_epistemique(g, injectes)
+    # On ne POUSSE que les inférences PERTINENTES (entité nommée dans la question), labellisées inféré.
+    if inferes:
+        from memoire.coeur.grammaire import rendu_infere
+        qtok = set(norm_nom(question).split())
+        pert = [fi for fi in inferes
+                if (set(norm_nom(fi.sujet).split()) & qtok) or (set(norm_nom(fi.objet).split()) & qtok)]
+        bloc_inf = rendu_infere(pert, actifs_seulement=True)
+        if bloc_inf:
+            bloc = (bloc + "\n" + bloc_inf) if bloc else bloc_inf
     return bloc, injectes
 
 

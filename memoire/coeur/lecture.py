@@ -18,6 +18,10 @@ from .graphe import norm_nom
 # type au pivot, cf. grammaire.py) et on injecte des faits INFÉRÉS, toujours marqués « inféré »
 # (jamais présentés comme observés), héritant du statut épistémique le plus faible de leurs maillons.
 NOYAU_GRAMMAIRE = os.environ.get("NOYAU_GRAMMAIRE", "").strip().lower() in ("1", "true", "on", "oui")
+# Rendu du statut NEUF « promu » (chantier 2C) — gardé par NOYAU_PROMOTION (défaut OFF). OFF : un fait
+# « promu » n'existe jamais (la promotion est elle-même gardée), donc rendu_epistemique est iso-résultat ;
+# le garde supplémentaire ici garantit STRICTEMENT l'ancien rendu si un store contenait déjà un « promu ».
+NOYAU_PROMOTION = os.environ.get("NOYAU_PROMOTION") == "1"
 
 SYS_REPONSE = (
     "Les entités (personnes, entreprises, villes) sont FICTIVES et proviennent d'une base de "
@@ -151,6 +155,9 @@ def rendu_epistemique(g, faits):
             de = f.valide_de.strftime("%Y-%m") if f.valide_de else "?"
             lignes.append(f"• [CLOS — n'est plus valable depuis {jus}] "
                           f"{phrase(f.predicat, s, o, 'passe')} (de {de} à {jus}).")
+        elif statut_eff == "promu" and NOYAU_PROMOTION:
+            lignes.append(f"• [PROMU — dormant redevenu pertinent, {src_txt}, dernière confirmation {conf}] "
+                          f"{phrase(f.predicat, s, o, 'present')}.")
         elif f.certitude >= 0.6:
             lignes.append(f"• [ACTUEL — sûr, {src_txt}, confirmé {conf}] "
                           f"{phrase(f.predicat, s, o, 'present')}.")
